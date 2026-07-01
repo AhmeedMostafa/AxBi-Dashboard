@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AxBi — Recommendation Engine &amp; Forecasting System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.7;
+    color: #1a1a2e;
+    background: #ffffff;
+  }
+
+  /* ── Cover page ── */
+  .cover {
+    page-break-after: always;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 80px 72px;
+    background: linear-gradient(135deg, #0f0f2e 0%, #1a1a4e 60%, #2d1b69 100%);
+    color: #ffffff;
+  }
+  .cover-badge {
+    background: rgba(90,90,246,0.3);
+    border: 1px solid rgba(90,90,246,0.6);
+    color: #a5b4fc;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 36px;
+    display: inline-block;
+  }
+  .cover h1 {
+    font-size: 34pt;
+    font-weight: 800;
+    line-height: 1.15;
+    color: #ffffff;
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+  }
+  .cover h1 span { color: #818cf8; }
+  .cover .subtitle {
+    font-size: 13pt;
+    color: #a5b4fc;
+    font-weight: 400;
+    margin-bottom: 60px;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+  .cover-divider {
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #5A5AF6, #7c3aed);
+    border-radius: 2px;
+    margin-bottom: 40px;
+  }
+  .cover-meta {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .cover-meta-item { font-size: 9pt; color: #6366f1; }
+  .cover-meta-item strong { display: block; color: #c7d2fe; font-size: 10pt; font-weight: 600; }
+
+  /* ── Page layout ── */
+  @page {
+    size: A4;
+    margin: 22mm 20mm 22mm 20mm;
+    @bottom-center {
+      content: counter(page);
+      font-size: 8pt;
+      color: #9ca3af;
+    }
+  }
+  @page :first { margin: 0; @bottom-center { content: ""; } }
+
+  /* ── TOC ── */
+  .toc-page {
+    page-break-after: always;
+    padding-top: 10px;
+  }
+  .toc-title {
+    font-size: 18pt;
+    font-weight: 800;
+    color: #1a1a2e;
+    margin-bottom: 30px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #5A5AF6;
+    letter-spacing: -0.5px;
+  }
+  .toc-section { margin-bottom: 6px; }
+  .toc-section a {
+    display: flex;
+    justify-content: space-between;
+    text-decoration: none;
+    color: #374151;
+    font-size: 10pt;
+    padding: 4px 0;
+  }
+  .toc-section a:hover { color: #5A5AF6; }
+  .toc-h1 { font-weight: 700; font-size: 11pt; color: #1a1a2e !important; margin-top: 12px; }
+  .toc-h2 { padding-left: 18px; }
+  .toc-h3 { padding-left: 36px; color: #6b7280 !important; font-size: 9.5pt !important; }
+  .toc-dots {
+    flex: 1;
+    border-bottom: 1px dotted #d1d5db;
+    margin: 0 8px;
+    position: relative;
+    top: -3px;
+  }
+
+  /* ── Content sections ── */
+  .part-header {
+    page-break-before: always;
+    background: linear-gradient(135deg, #0f0f2e, #1a1a4e);
+    color: #fff;
+    padding: 50px 40px;
+    border-radius: 12px;
+    margin-bottom: 36px;
+  }
+  .part-label {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #818cf8;
+    margin-bottom: 12px;
+  }
+  .part-header h2 {
+    font-size: 24pt;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #ffffff;
+    margin-bottom: 14px;
+  }
+  .part-header p {
+    color: #a5b4fc;
+    font-size: 10.5pt;
+    line-height: 1.7;
+    max-width: 520px;
+  }
+
+  h2.section {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #1a1a2e;
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+    letter-spacing: -0.3px;
+  }
+  h3.sub {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #374151;
+    margin: 26px 0 10px;
+  }
+  h4.sub2 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #5A5AF6;
+    margin: 18px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 9pt;
+  }
+  p { margin-bottom: 10px; }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-left: 4px solid #5A5AF6;
+    background: #f0f0ff;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 10pt;
+  }
+  .callout.warning {
+    border-color: #f59e0b;
+    background: #fffbeb;
+  }
+  .callout.success {
+    border-color: #10b981;
+    background: #f0fdf4;
+  }
+  .callout strong { color: #1a1a2e; }
+
+  /* ── Pipeline diagram ── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 20px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+  }
+  .pipeline-step.active {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+  }
+  .step-num {
+    width: 26px;
+    height: 26px;
+    background: #5A5AF6;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-body { flex: 1; }
+  .step-body strong { color: #1a1a2e; font-size: 9.5pt; }
+  .step-body small { color: #6b7280; font-size: 8.5pt; display: block; }
+  .pipeline-arrow {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 16pt;
+    line-height: 1;
+    margin: 0 0 0 12px;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 22px;
+    font-size: 9.5pt;
+  }
+  thead tr { background: #1a1a2e; color: #fff; }
+  thead th {
+    text-align: left;
+    padding: 9px 12px;
+    font-weight: 600;
+    font-size: 8.5pt;
+    letter-spacing: 0.3px;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody tr:nth-child(odd)  { background: #ffffff; }
+  tbody td { padding: 8px 12px; color: #374151; border-bottom: 1px solid #f1f5f9; }
+  tbody td:first-child { font-weight: 600; color: #1a1a2e; }
+
+  /* ── Code blocks ── */
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5pt;
+    line-height: 1.6;
+    padding: 18px 20px;
+    border-radius: 10px;
+    margin: 14px 0 20px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    background: #f1f5f9;
+    color: #5A5AF6;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 8.5pt;
+  }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ── Severity badges ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .badge-critical { background: #fee2e2; color: #b91c1c; }
+  .badge-warning  { background: #fef3c7; color: #b45309; }
+  .badge-info     { background: #dbeafe; color: #1d4ed8; }
+  .badge-healthy  { background: #d1fae5; color: #065f46; }
+
+  /* ── Signal card grid ── */
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .signal-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: #fafafa;
+  }
+  .signal-card .sig-num {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .signal-card .sig-name {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #1a1a2e;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 5px;
+  }
+  .signal-card .sig-desc {
+    font-size: 8.5pt;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+
+  /* ── Model cards ── */
+  .model-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .model-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: #fafafa;
+  }
+  .model-card .model-name {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #5A5AF6;
+    margin-bottom: 4px;
+  }
+  .model-card .model-class {
+    font-size: 7.5pt;
+    font-family: 'JetBrains Mono', monospace;
+    color: #9ca3af;
+    margin-bottom: 8px;
+  }
+  .model-card .model-desc {
+    font-size: 8.5pt;
+    color: #374151;
+    line-height: 1.5;
+  }
+
+  /* ── Diagnosis table colors ── */
+  .diag-check   { color: #7c3aed; font-weight: 600; }
+  .diag-healthy { color: #059669; font-weight: 600; }
+  .diag-mild    { color: #d97706; font-weight: 600; }
+  .diag-over    { color: #dc2626; font-weight: 600; }
+  .diag-severe  { color: #7f1d1d; font-weight: 700; }
+
+  ul, ol {
+    padding-left: 22px;
+    margin-bottom: 12px;
+  }
+  li { margin-bottom: 4px; }
+  li strong { color: #1a1a2e; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 28px 0;
+  }
+
+  .highlight-box {
+    background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 18px 0;
+  }
+  .highlight-box h4 { color: #4338ca; font-size: 10pt; margin-bottom: 8px; }
+
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ COVER ══════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-badge">Technical Reference</div>
+  <h1>Recommendation Engine<br /><span>&amp; Forecasting System</span></h1>
+  <p class="subtitle">A complete technical reference for the two core AI subsystems of AxBi — how signals are detected, how models compete, and how actionable insights are generated.</p>
+  <div class="cover-divider"></div>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><strong>Project</strong>AxBi — Graduation Project</div>
+    <div class="cover-meta-item"><strong>Date</strong>May 2026</div>
+    <div class="cover-meta-item"><strong>Scope</strong>Backend Python Services</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ TOC ══════════════════════════════════════════════ -->
+<div class="toc-page">
+  <div class="toc-title">Table of Contents</div>
+
+  <div class="toc-section"><a class="toc-h1" href="#rec-overview"><span>Part 1 — Recommendation Engine</span><span class="toc-dots"></span><span>3</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#rec-arch"><span>Architecture Overview</span><span class="toc-dots"></span><span>3</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#context-builder"><span>Stage 1 — Context Builder</span><span class="toc-dots"></span><span>3</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#snapshot-hash"><span>Stage 2 — Snapshot Hash &amp; Cache</span><span class="toc-dots"></span><span>4</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#signal-detectors"><span>Stage 3 — Signal Detectors</span><span class="toc-dots"></span><span>4</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#signal-schema"><span>Signal Schema</span><span class="toc-dots"></span><span>4</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#all-detectors"><span>All 14 Detectors</span><span class="toc-dots"></span><span>5</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#gemini-prompt"><span>Stage 4 — Gemini Prompt &amp; Call</span><span class="toc-dots"></span><span>6</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#persistence"><span>Stage 5 — Enrichment &amp; Persistence</span><span class="toc-dots"></span><span>7</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#no-forecast-case"><span>No Forecast / Segmentation Case</span><span class="toc-dots"></span><span>7</span></a></div>
+
+  <div class="toc-section" style="margin-top:16px;"><a class="toc-h1" href="#forecast-overview"><span>Part 2 — Forecasting System</span><span class="toc-dots"></span><span>8</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#forecast-entrypoint"><span>Entry Point &amp; Production Hardening</span><span class="toc-dots"></span><span>8</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#forecast-pipeline"><span>Full Pipeline</span><span class="toc-dots"></span><span>8</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#readiness"><span>Step 1 — Readiness Checks</span><span class="toc-dots"></span><span>8</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#series-prep"><span>Step 2 — Series Preparation</span><span class="toc-dots"></span><span>9</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#eligibility"><span>Step 3 — Model Eligibility</span><span class="toc-dots"></span><span>9</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#cv"><span>Step 4 — Rolling Cross-Validation</span><span class="toc-dots"></span><span>10</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#holdout"><span>Step 5 — 70/30 Holdout Test</span><span class="toc-dots"></span><span>10</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#selection"><span>Step 6 — Model Selection</span><span class="toc-dots"></span><span>11</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#ensemble"><span>Step 7 — Ensemble Blending</span><span class="toc-dots"></span><span>11</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#forecast-gen"><span>Step 8 — Forecast Generation</span><span class="toc-dots"></span><span>11</span></a></div>
+  <div class="toc-section"><a class="toc-h3" href="#quality-warnings"><span>Step 9 — Quality Warnings</span><span class="toc-dots"></span><span>12</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#all-models"><span>All 7 Models</span><span class="toc-dots"></span><span>12</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#tree-features"><span>Tree Model Feature Set</span><span class="toc-dots"></span><span>13</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#output-shape"><span>Output Shape</span><span class="toc-dots"></span><span>13</span></a></div>
+  <div class="toc-section"><a class="toc-h2" href="#data-flow"><span>End-to-End Data Flow</span><span class="toc-dots"></span><span>14</span></a></div>
+</div>
+
+<!-- ══════════════════════════════════════════════ PART 1 ══════════════════════════════════════════════ -->
+<div id="rec-overview" class="part-header">
+  <div class="part-label">Part 1</div>
+  <h2>Recommendation Engine</h2>
+  <p>Converts raw analytics outputs — AI report, forecasts, and segmentation results — into 3–5 prioritized, actionable business recommendations. Runs on-demand with intelligent caching.</p>
+</div>
+
+<h2 id="rec-arch" class="section">Architecture Overview</h2>
+<p>The engine is a <strong>5-stage pipeline</strong> implemented in <code>backend/api/recommendations/</code>. Each stage is a separate module with a single responsibility.</p>
+
+<div class="pipeline">
+  <div class="pipeline-step active">
+    <div class="step-num">1</div>
+    <div class="step-body"><strong>build_dataset_context()</strong><small>Assemble all analytics for this dataset into one dict</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step active">
+    <div class="step-num">2</div>
+    <div class="step-body"><strong>Snapshot Hash Check</strong><small>SHA1 of forecast ID + segmentation timestamp + step8 timestamp → cache hit returns immediately</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step active">
+    <div class="step-num">3</div>
+    <div class="step-body"><strong>run_all_detectors()</strong><small>14 deterministic Python functions — each fires independently, returning typed Signal dicts</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step active">
+    <div class="step-num">4</div>
+    <div class="step-body"><strong>build_prompt() → call_gemini()</strong><small>Signals serialized as JSON → Gemini converts them to prioritized recommendation text</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step active">
+    <div class="step-num">5</div>
+    <div class="step-body"><strong>Enrich &amp; Persist</strong><small>Add stable UUIDs, normalize priority → merge into global_context["recommendations"]</small></div>
+  </div>
+</div>
+
+<h2 id="context-builder" class="section">Stage 1 — Context Builder</h2>
+<p><strong>File:</strong> <code>recommendations/context_builder.py</code> → <code>build_dataset_context(dataset_id)</code></p>
+<p>Assembles everything known about the dataset into one unified context dict used by all downstream stages:</p>
+
+<table>
+  <thead><tr><th>Key</th><th>Source</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>category</td><td>datasets.category_hint</td><td>Used as domain language in the prompt</td></tr>
+    <tr><td>filename</td><td>datasets.file_name</td><td>Shown in recommendation context</td></tr>
+    <tr><td>row_count</td><td>file_info.row_count</td><td>Dataset size for context</td></tr>
+    <tr><td>columns</td><td>columns_metadata table</td><td>All column rows with stats + AI profile</td></tr>
+    <tr><td>step7_charts</td><td>global_context.step7.suggested_charts</td><td>Chart suggestions from pipeline</td></tr>
+    <tr><td>step8</td><td>global_context.step8</td><td>Full AI narrative report sections</td></tr>
+    <tr><td>segmentation</td><td>global_context.segmentation</td><td>RFM / ABC / K-Means results</td></tr>
+    <tr><td>forecast</td><td>forecast_logs table (by ID)</td><td>Includes full forecast_data JSONB</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Important — Two-step forecast fetch:</strong> <code>get_forecast_results()</code> returns only a summary list without <code>forecast_data</code>.
+  A second call to <code>get_forecast_result_by_id()</code> is required to load the actual forecast point array.
+  Without this, trend-based detectors (decline, growth) cannot fire.
+</div>
+
+<h2 id="snapshot-hash" class="section">Stage 2 — Snapshot Hash &amp; Cache</h2>
+<p><strong>File:</strong> <code>recommendations/service.py</code> → <code>_compute_snapshot_hash(ctx)</code></p>
+
+<pre><code>parts = [
+    forecast.id  or  forecast.created_at,
+    segmentation.generated_at  or  segmentation.method,
+    step8.generated_at,
+    step7.generated_at,
+]
+hash = sha1("|".join(parts))[:16 chars]</code></pre>
+
+<p>If <code>global_context.recommendations.snapshot_hash</code> matches the computed hash, the cached blob is returned with no Gemini API call. The cache is automatically invalidated when any of the following happen:</p>
+<ul>
+  <li>A new forecast run completes (new ID or timestamp)</li>
+  <li>Segmentation is re-run (new generated_at)</li>
+  <li>The pipeline re-generates the Step 8 report</li>
+</ul>
+<p>Passing <code>force=True</code> bypasses the cache entirely and always regenerates.</p>
+
+<h2 id="signal-detectors" class="section">Stage 3 — Signal Detectors</h2>
+<p><strong>File:</strong> <code>recommendations/signal_detectors.py</code></p>
+<p>14 deterministic Python functions. Each inspects the context dict and returns a typed Signal dict or <code>None</code>. All run in sequence via <code>run_all_detectors(ctx)</code> — every detector that fires produces a signal. There is no early exit; all signals are collected.</p>
+
+<h3 id="signal-schema" class="sub">Signal Schema</h3>
+<pre><code>{
+    "type":            str,    # identifier used in the prompt and frontend labels
+    "severity":        str,    # "critical" | "warning" | "info"
+    "affected_entity": str,    # column name, segment name, or filename
+    "confidence":      float,  # 0.0 – 1.0 (used by Gemini for priority)
+    "evidence": {
+        # raw numbers that Gemini must cite in the recommendation text
+        "metric":     "...",
+        "value_pct":  40.5,
+        ...
+    }
+}</code></pre>
+
+<div class="callout">
+  <strong>Execution order matters:</strong> <code>detect_step8_insights</code> is listed <strong>first</strong> in the DETECTORS registry so Gemini always receives the AI report content as a base signal, even when no forecast or segmentation exists.
+</div>
+
+<h3 id="all-detectors" class="sub">All 14 Detectors</h3>
+
+<div class="signal-grid">
+  <div class="signal-card">
+    <div class="sig-num">#1</div>
+    <div class="sig-name">detect_step8_insights</div>
+    <div class="sig-desc">Fires when an AI report (Step 8) exists. Extracts section summaries as Gemini's primary content source. Always fires for any processed dataset. <span class="badge badge-info">info</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#2</div>
+    <div class="sig-name">detect_forecast_decline</div>
+    <div class="sig-desc">Fires when the forecast metric drops &gt;10% from first to last predicted point. <span class="badge badge-warning">warning</span> &gt;25% → <span class="badge badge-critical">critical</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#3</div>
+    <div class="sig-name">detect_forecast_growth</div>
+    <div class="sig-desc">Fires when the forecast metric grows &gt;20% from first to last predicted point. Good news signal. <span class="badge badge-info">info</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#4</div>
+    <div class="sig-name">detect_low_confidence_forecast</div>
+    <div class="sig-desc">Fires when forecast confidence is "low" OR WAPE &gt; 30%. Indicates unreliable predictions. <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#5</div>
+    <div class="sig-name">detect_severe_overfit</div>
+    <div class="sig-desc">Fires when the selected best model has <code>fit_diagnosis</code> = "severe_overfit" or "overfit". <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#6</div>
+    <div class="sig-name">detect_shrinking_top_segment</div>
+    <div class="sig-desc">Fires when Champions / A-tier segment is &lt;5% of population. &lt;2% → <span class="badge badge-critical">critical</span> else <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#7</div>
+    <div class="sig-name">detect_growing_at_risk_segment</div>
+    <div class="sig-desc">Fires when At-risk / churning segment exceeds 25% of population. &gt;40% → <span class="badge badge-critical">critical</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#8</div>
+    <div class="sig-name">detect_concentration_risk</div>
+    <div class="sig-desc">Fires when ABC A-tier segment holds &gt;70% of total value. Over-concentration risk. <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#9</div>
+    <div class="sig-name">detect_high_null_columns</div>
+    <div class="sig-desc">Fires when any column has &gt;30% null values. &gt;3 columns → <span class="badge badge-critical">critical</span> else <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#10</div>
+    <div class="sig-name">detect_stale_data</div>
+    <div class="sig-desc">Fires when the latest date column value is &gt;90 days old. &gt;180 days → <span class="badge badge-critical">critical</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#11</div>
+    <div class="sig-name">detect_anomaly_cluster</div>
+    <div class="sig-desc">Fires when WAPE &gt; 50% — very high error may indicate structural breaks or data anomalies. <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#12</div>
+    <div class="sig-name">detect_moderate_forecast_error</div>
+    <div class="sig-desc">Fires when WAPE is between 20–50% — moderate but worth flagging. <span class="badge badge-warning">warning</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#13</div>
+    <div class="sig-name">detect_no_forecast</div>
+    <div class="sig-desc">Fires when no forecast has been run yet. Recommends running one. Does not fire if forecast exists. <span class="badge badge-info">info</span></div>
+  </div>
+  <div class="signal-card">
+    <div class="sig-num">#14</div>
+    <div class="sig-name">detect_no_segmentation</div>
+    <div class="sig-desc">Fires when no segmentation has been run yet. Recommends running one. Does not fire if segmentation exists. <span class="badge badge-info">info</span></div>
+  </div>
+</div>
+
+<h2 id="gemini-prompt" class="section">Stage 4 — Gemini Prompt &amp; Call</h2>
+<p><strong>Files:</strong> <code>recommendations/prompts.py</code> and <code>recommendations/gemini_client.py</code></p>
+
+<p>If at least one signal fired, <code>build_prompt(ctx, signals)</code> constructs the prompt and <code>call_gemini(prompt)</code> sends it.</p>
+
+<h4 class="sub2">Prompt Variables</h4>
+<ul>
+  <li><strong>category</strong> — domain language mapping (Sales → "customer", HR → "employee", Operations → "product", Marketing → "campaign")</li>
+  <li><strong>filename</strong> + <strong>row_count</strong> — dataset identity for context</li>
+  <li><strong>signals_json</strong> — full JSON array of all fired signals including their evidence dicts</li>
+</ul>
+
+<h4 class="sub2">What Gemini Returns</h4>
+<pre><code>{
+  "recommendations": [
+    {
+      "title":        "Imperative action phrase (max 8 words)",
+      "rationale":    "1-2 sentences citing numbers from signal evidence",
+      "priority":     "high | medium | low",
+      "actions":      ["Concrete step 1", "Concrete step 2", ...],
+      "metrics":      { "metric_name": 40.5 },   // real numbers only
+      "triggered_by": ["signal_type", ...]
+    }
+  ]
+}</code></pre>
+
+<h4 class="sub2">Hard Prompt Rules</h4>
+<ul>
+  <li><code>metrics</code> values must be <strong>actual numbers</strong> from the signal evidence — never strings like "Track weekly" or "N/A"</li>
+  <li>Priority maps from severity: <code>critical → high</code>, <code>warning → medium</code>, <code>info → low</code></li>
+  <li>If the signals array is empty → return empty recommendations (Gemini must not invent signals)</li>
+  <li>Output must be pure JSON — no markdown fences, no commentary</li>
+</ul>
+
+<h4 class="sub2">Gemini Model Chain</h4>
+<p>Tried in order. Next model is used on any error (rate limit, 503, deprecation):</p>
+
+<table>
+  <thead><tr><th>#</th><th>Model</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>gemini-2.5-flash</td><td>Primary — fastest, best quality</td></tr>
+    <tr><td>2</td><td>gemini-2.0-flash</td><td>Secondary fallback</td></tr>
+    <tr><td>3</td><td>gemini-2.0-flash-lite</td><td>Final fallback</td></tr>
+  </tbody>
+</table>
+
+<p>Config: <code>temperature=0.4</code>, <code>max_output_tokens=4096</code>, <code>response_mime_type="application/json"</code> (forces structured JSON, eliminates markdown stripping). If all three models fail, the function returns <code>[]</code> — no crash, no exception propagation.</p>
+
+<h2 id="persistence" class="section">Stage 5 — Enrichment &amp; Persistence</h2>
+<p><strong>File:</strong> <code>recommendations/service.py</code> → <code>_enrich(rec, idx)</code></p>
+
+<p>Each recommendation returned by Gemini is enriched with:</p>
+<ul>
+  <li>A stable <strong>UUID</strong> <code>id</code> (or passed through if Gemini provided one)</li>
+  <li><strong>Priority normalized</strong> to <code>low | medium | high</code> (any unrecognized value → "medium")</li>
+</ul>
+
+<p>The final blob is written to <code>global_context["recommendations"]</code> on the <code>datasets</code> table using a <strong>merge</strong> — other keys in <code>global_context</code> (step7, step8, segmentation, etc.) are preserved.</p>
+
+<pre><code>{
+    "generated_at":   "2026-05-05T10:30:00+00:00",
+    "snapshot_hash":  "a3f9b2c1d4e5f6g7",        // 16-char SHA1 prefix
+    "signals":        [...],                        // all fired signals
+    "recommendations": [...]                        // enriched list
+}</code></pre>
+
+<h2 id="no-forecast-case" class="section">No Forecast / Segmentation Case</h2>
+
+<div class="highlight-box">
+  <h4>The engine always works — even for brand-new datasets.</h4>
+  <p>As long as the pipeline completed Step 8 (AI narrative report), <code>detect_step8_insights</code> fires and provides the report's section summaries as Gemini's primary evidence. Gemini derives domain-specific recommendations from those summaries.</p>
+  <p style="margin-top:10px;">Additionally, <code>detect_no_forecast</code> and <code>detect_no_segmentation</code> fire as <code>info</code> signals, prompting Gemini to recommend running those analyses and explain their specific business value for that category (Sales, HR, Operations, or Marketing).</p>
+</div>
+
+<!-- ══════════════════════════════════════════════ PART 2 ══════════════════════════════════════════════ -->
+<div id="forecast-overview" class="part-header page-break">
+  <div class="part-label">Part 2</div>
+  <h2>Forecasting System</h2>
+  <p>A multi-model competition engine that trains 7 forecasting models via rolling cross-validation, blends the two best when they agree, and produces a point forecast with confidence intervals stored in forecast_logs.</p>
+</div>
+
+<h2 id="forecast-entrypoint" class="section">Entry Point &amp; Production Hardening</h2>
+<p><strong>File:</strong> <code>backend/api/views.py</code> → <code>forecast_dataset_view</code></p>
+
+<p>Before delegating to the service, the Django view enforces three production safeguards:</p>
+
+<table>
+  <thead><tr><th>Safeguard</th><th>Mechanism</th><th>Response on breach</th></tr></thead>
+  <tbody>
+    <tr><td>Rate limit</td><td>30-second per-user cooldown via threading.Lock + timestamp dict</td><td>HTTP 429 with retry_after_seconds</td></tr>
+    <tr><td>Timeout</td><td>ThreadPoolExecutor wraps run_forecast_service(); hard cut at 300 s</td><td>HTTP 504</td></tr>
+    <tr><td>Persistence</td><td>_persist_forecast_log() saves full result to forecast_logs table</td><td>Always runs after success</td></tr>
+  </tbody>
+</table>
+
+<h2 id="forecast-pipeline" class="section">Full Pipeline: run_forecast_service()</h2>
+<p><strong>File:</strong> <code>backend/api/forecasting/service.py</code></p>
+
+<h3 id="readiness" class="sub">Step 1 — Readiness Checks</h3>
+<p>Validated before any computation. Returns <code>forecast_possible: False</code> if any check fails:</p>
+<ul>
+  <li>Time column exists and ≥ 80% of values are parseable as dates</li>
+  <li>Target column exists and ≥ 60% of values are numeric</li>
+  <li>At least 3 valid (time, target) row pairs exist after parsing</li>
+  <li>All user-specified feature columns are present in the DataFrame</li>
+</ul>
+
+<h3 id="series-prep" class="sub">Step 2 — Series Preparation</h3>
+
+<h4 class="sub2">Frequency Detection</h4>
+<p>Computed from the median gap between consecutive timestamps:</p>
+
+<table>
+  <thead><tr><th>Median gap</th><th>Assigned frequency</th><th>Season length</th></tr></thead>
+  <tbody>
+    <tr><td>≈ 1 day</td><td>D (daily)</td><td>7 (weekly cycle)</td></tr>
+    <tr><td>≈ 7 days</td><td>W (weekly)</td><td>52</td></tr>
+    <tr><td>≈ 30 days</td><td>MS (month-start)</td><td>12</td></tr>
+    <tr><td>≈ 90 days</td><td>QS (quarter-start)</td><td>4</td></tr>
+  </tbody>
+</table>
+
+<h4 class="sub2">Processing Steps</h4>
+<ol>
+  <li>Parse time column to datetime; drop unparseable rows</li>
+  <li>Convert target to float; handle nulls per missing_periods_policy (default: drop)</li>
+  <li>Resample to detected frequency — sums values within each period, fills gaps</li>
+  <li><strong>IQR outlier capping</strong> — values beyond [Q1 − 1.5×IQR, Q3 + 1.5×IQR] are capped; capped points recorded as anomalies</li>
+  <li><strong>Log transform detection</strong> — applied if: all values &gt; 0, coefficient of variation &gt; 0.5, and log-space residuals have lower variance than raw-space. Predictions are exponentiated back before output.</li>
+</ol>
+
+<h3 id="eligibility" class="sub">Step 3 — Model Eligibility</h3>
+<p>Each model has a minimum required history. A model is eligible only if <code>total_rows ≥ min_history + horizon</code>. Ineligible models are skipped and logged.</p>
+
+<table>
+  <thead><tr><th>Model</th><th>Min history rows</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Naive</td><td>3</td><td>Always eligible if data passes readiness</td></tr>
+    <tr><td>Seasonal Naive</td><td>max(6, 2 × season_length)</td><td>Needs two full cycles</td></tr>
+    <tr><td>ETS</td><td>10</td><td>Falls back to non-seasonal if series too short</td></tr>
+    <tr><td>SARIMAX</td><td>20</td><td>Needs enough for ADF test + order selection</td></tr>
+    <tr><td>Prophet</td><td>20</td><td>Minimum for trend estimation</td></tr>
+    <tr><td>CatBoost</td><td>30</td><td>Needs enough lag history</td></tr>
+    <tr><td>LightGBM</td><td>30</td><td>Same as CatBoost</td></tr>
+  </tbody>
+</table>
+
+<h3 id="cv" class="sub">Step 4 — Rolling Cross-Validation</h3>
+<p>Runs a <strong>3-fold rolling backtest</strong> for each eligible model. Each fold uses the first <code>N × (fold/folds)</code> rows to train and predicts the next <code>horizon</code> steps.</p>
+
+<p>Training is capped for expensive models to avoid O(n²) fitting time:</p>
+<table>
+  <thead><tr><th>Model</th><th>CV train cap</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr><td>LightGBM / CatBoost</td><td>1,095 rows</td><td>3 years covers annual lag cycle</td></tr>
+    <tr><td>Prophet</td><td>1,095 rows</td><td>Needs 3 years for annual Fourier seasonality</td></tr>
+    <tr><td>SARIMAX</td><td>500 rows</td><td>auto_arima AIC grid is slow</td></tr>
+  </tbody>
+</table>
+
+<h4 class="sub2">Metrics computed per fold (then averaged)</h4>
+<table>
+  <thead><tr><th>Metric</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td>MAE</td><td>Mean Absolute Error — average absolute deviation</td></tr>
+    <tr><td>RMSE</td><td>Root Mean Squared Error — penalizes large errors more</td></tr>
+    <tr><td>WAPE</td><td>Weighted Absolute Percentage Error — MAE / mean(actuals)</td></tr>
+    <tr><td>MASE</td><td>Mean Absolute Scaled Error — relative to naive baseline</td></tr>
+  </tbody>
+</table>
+
+<p>Model selection uses <strong>average rank across all 4 metrics</strong> — not just a single metric. This prevents a model that wins on MAE but loses badly on RMSE from being selected unfairly.</p>
+
+<h3 id="holdout" class="sub">Step 5 — 70/30 Holdout Test</h3>
+<p>In parallel with CV, <code>_evaluate_holdout_test()</code> trains on the first 70% and evaluates on the last 30%. Used <strong>only for overfit diagnosis</strong>, not for model selection.</p>
+
+<h4 class="sub2">Fit Diagnosis (test_mae / cv_mae ratio)</h4>
+<table>
+  <thead><tr><th>Ratio</th><th>Diagnosis</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>&lt; 0.70</td><td><span class="diag-check">check_leakage</span></td><td>Test is suspiciously easy — possible data leakage</td></tr>
+    <tr><td>0.70 – 1.20</td><td><span class="diag-healthy">healthy</span></td><td>Model generalizes well</td></tr>
+    <tr><td>1.20 – 1.50</td><td><span class="diag-mild">mild_overfit</span></td><td>Slight generalization gap — monitor</td></tr>
+    <tr><td>1.50 – 2.00</td><td><span class="diag-over">overfit</span></td><td>Significant gap — consider simpler model</td></tr>
+    <tr><td>&gt; 2.00</td><td><span class="diag-severe">severe_overfit</span></td><td>Model memorized training data — triggers recommendation signal</td></tr>
+  </tbody>
+</table>
+
+<h3 id="selection" class="sub">Step 6 — Model Selection</h3>
+<p><code>_select_best_model()</code> ranks all successful models by their <strong>average rank across MAE, RMSE, WAPE, and MASE</strong>. Lower average rank = better overall performer.</p>
+<p>The primary selection metric is MAE — used for tie-breaking and ensemble eligibility checks.</p>
+
+<h3 id="ensemble" class="sub">Step 7 — Ensemble Blending</h3>
+<p>If the runner-up model's MAE is within <strong>25% of the winner's MAE</strong>, the two predictions are blended 50/50:</p>
+
+<pre><code>future_pred = (best_pred + partner_pred) / 2.0
+ensemble_label = "model1+model2"   # e.g. "prophet+lightgbm"</code></pre>
+
+<p>When ensemble is active, native prediction intervals from the best model are discarded. Empirical intervals (from CV residuals) are used instead — because the residual distribution of the blend differs from either component model alone.</p>
+
+<h3 id="forecast-gen" class="sub">Step 8 — Forecast Generation</h3>
+<ol>
+  <li>Refit the best model (or both ensemble components) on the <strong>full</strong> dataset</li>
+  <li>Build a future date frame of <code>horizon</code> periods at the detected frequency</li>
+  <li>Call <code>predict_with_intervals()</code>:
+    <ul>
+      <li><strong>SARIMAX</strong> — native Bayesian prediction intervals from statsmodels</li>
+      <li><strong>All other models</strong> — empirical intervals from CV residuals at 80% coverage</li>
+    </ul>
+  </li>
+  <li>If log-transform was applied, exponentiate predictions and intervals back</li>
+  <li>Clamp lower bound to ≥ 0 if original series was non-negative</li>
+  <li>Ensure every interval brackets its point forecast — adjust if not, and count adjustments</li>
+</ol>
+
+<h3 id="quality-warnings" class="sub">Step 9 — Quality Warnings</h3>
+
+<table>
+  <thead><tr><th>Warning type</th><th>Condition</th><th>Frontend display</th></tr></thead>
+  <tbody>
+    <tr><td>Flat forecast (stable)</td><td>forecastRange / histRange &lt; 0.05 and histRange / histMean ≤ 0.30</td><td>Sky-blue info banner</td></tr>
+    <tr><td>Flat forecast (volatile data)</td><td>forecastRange / histRange &lt; 0.05 and histRange / histMean &gt; 0.30</td><td>Amber warning banner</td></tr>
+    <tr><td>Wide intervals</td><td>upper/lower band span &gt; 2× point forecast</td><td>Warning in model results</td></tr>
+    <tr><td>Non-bracketing</td><td>Interval adjusted to contain point forecast</td><td>Count shown in warnings array</td></tr>
+  </tbody>
+</table>
+
+<h2 id="all-models" class="section">All 7 Forecasting Models</h2>
+
+<div class="model-grid">
+  <div class="model-card">
+    <div class="model-name">Naive</div>
+    <div class="model-class">NaiveForecaster</div>
+    <div class="model-desc">Repeats the last observed value for all future periods. Serves as the absolute baseline. Min: 3 rows. Always eligible.</div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">Seasonal Naive</div>
+    <div class="model-class">SeasonalNaiveForecaster</div>
+    <div class="model-desc">Repeats the last full seasonal cycle. Surprisingly strong on data with regular weekly / monthly patterns. Min: 2 full cycles.</div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">ETS (Holt-Winters)</div>
+    <div class="model-class">ETSForecaster</div>
+    <div class="model-desc">Exponential smoothing with additive trend + additive seasonality. Uses statsmodels ExponentialSmoothing with auto-optimization. Falls back to non-seasonal if series is short. Min: 10 rows.</div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">SARIMAX</div>
+    <div class="model-class">SarimaxForecaster</div>
+    <div class="model-desc">ARIMA with seasonal terms + optional exogenous features. Orders selected via AIC grid search over p∈{0,1,2}, d∈{0,1}, q∈{0,1,2} with a 20-second timeout. Falls back to heuristic on timeout. Provides native Bayesian intervals. Min: 20 rows.</div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">CatBoost</div>
+    <div class="model-class">CatBoostForecaster</div>
+    <div class="model-desc">Gradient boosting tree with recursive multi-step forecasting. Uses 30 lag/rolling/calendar features. Handles non-linearity and interactions naturally. Min: 30 rows. CV cap: 1,095 rows.</div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">LightGBM</div>
+    <div class="model-class">LightGBMForecaster</div>
+    <div class="model-desc">Identical feature set to CatBoost but uses a different histogram-based boosting algorithm. Generally faster to train. Often wins on large datasets. Min: 30 rows. CV cap: 1,095 rows.</div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">Prophet</div>
+    <div class="model-class">ProphetForecaster</div>
+    <div class="model-desc">Facebook's additive decomposition model. Handles multiple simultaneous seasonalities (daily, weekly, yearly) automatically via Fourier series. Exogenous regressors added for user-selected feature columns. Min: 20 rows. CV cap: 1,095 rows.</div>
+  </div>
+</div>
+
+<h2 id="tree-features" class="section">Tree Model Feature Set (CatBoost &amp; LightGBM)</h2>
+<p>Built by <code>_build_ts_feature_row()</code> — identical for both models so their predictions are directly comparable:</p>
+
+<table>
+  <thead><tr><th>Category</th><th>Features</th></tr></thead>
+  <tbody>
+    <tr><td>Lag values</td><td>lag_1, lag_2, lag_3, lag_7, lag_14, lag_21, lag_season</td></tr>
+    <tr><td>Momentum</td><td>diff_1, pct_change_1, pct_change_7, pct_change_14</td></tr>
+    <tr><td>Rolling statistics</td><td>rolling_mean_3/7/14/30, rolling_std_3/7</td></tr>
+    <tr><td>Exponential moving avg</td><td>ewm_5, ewm_12, ewm_diff (ewm_5 − ewm_12)</td></tr>
+    <tr><td>Linear trend</td><td>trend_slope_7 (slope of last 7 points)</td></tr>
+    <tr><td>Calendar features</td><td>month, quarter, weekday, is_weekend, is_month_start, is_month_end, day_of_year</td></tr>
+    <tr><td>Fourier features</td><td>sin_yearly, cos_yearly, sin_weekly, cos_weekly</td></tr>
+    <tr><td>Exogenous (user-selected)</td><td>exog__&lt;feature_col&gt; for each additional column</td></tr>
+  </tbody>
+</table>
+
+<p>Total: up to <strong>30+ features</strong> per time step before exogenous columns are added.</p>
+
+<h2 id="output-shape" class="section">Output Shape</h2>
+<p>The full JSON returned by <code>run_forecast_service()</code> and stored in <code>forecast_logs.result</code>:</p>
+
+<pre><code>{
+  "forecast_possible": true,
+  "best_model":        "prophet+lightgbm",   // or single model
+  "ensemble":          true,
+  "metrics": {                               // CV metrics of winner
+    "mae": 0.043, "rmse": 0.061,
+    "wape": 0.013, "mase": 0.31
+  },
+  "confidence":        "high",              // "high" | "medium" | "low"
+  "confidence_reason": "...",
+  "model_results": [{                        // one entry per candidate model
+    "model":          "prophet",
+    "status":         "ok",
+    "folds":          3,
+    "metrics":        { "mae": ..., "rmse": ..., "wape": ..., "mase": ... },
+    "test_metrics":   { "mae": ..., "rmse": ... },  // holdout
+    "fit_diagnosis":  "healthy",
+    "fit_ratio":      0.92
+  }, ...],
+  "forecast": [                              // future point forecasts
+    { "date": "2026-05-06", "value": 1450.2 }, ...
+  ],
+  "prediction_intervals": [
+    { "date": "2026-05-06", "lower": 1310.0, "upper": 1590.0 }, ...
+  ],
+  "historical": [...],                       // last 90 periods for charting
+  "test_comparison": [...],                  // holdout actual vs predicted
+  "feature_importance": [...],               // tree models only
+  "anomalies": [...],                        // IQR-capped outlier points
+  "warnings": [...],                         // quality warning strings
+  "training_rows": 842,
+  "duration_ms": 4821
+}</code></pre>
+
+<h2 id="data-flow" class="section">End-to-End Data Flow</h2>
+
+<div class="pipeline">
+  <div class="pipeline-step">
+    <div class="step-num">①</div>
+    <div class="step-body"><strong>User picks columns in AIModel.tsx</strong><small>time_col, target_col, optional feature_cols, horizon (default 30)</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">②</div>
+    <div class="step-body"><strong>POST /api/datasets/&lt;id&gt;/forecast/</strong><small>Rate limit check (30s) → ThreadPoolExecutor (300s timeout)</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">③</div>
+    <div class="step-body"><strong>Readiness checks → Series preparation</strong><small>Parse, resample, IQR cap, log-transform detection, frequency auto-detect</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">④</div>
+    <div class="step-body"><strong>Eligibility filter → 3-fold Rolling CV</strong><small>Each eligible model trained and evaluated: MAE, RMSE, WAPE, MASE averaged across folds</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">⑤</div>
+    <div class="step-body"><strong>70/30 holdout → fit_diagnosis per model</strong><small>check_leakage | healthy | mild_overfit | overfit | severe_overfit</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">⑥</div>
+    <div class="step-body"><strong>Select winner by avg-rank → ensemble check</strong><small>If runner-up MAE within 25% of winner → blend 50/50</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">⑦</div>
+    <div class="step-body"><strong>Refit on full data → predict + intervals</strong><small>Constraints: clamp negatives, ensure intervals bracket point forecasts</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">⑧</div>
+    <div class="step-body"><strong>_persist_forecast_log() → HTTP 200</strong><small>Full result JSON saved to forecast_logs table</small></div>
+  </div>
+  <div class="pipeline-arrow">↓</div>
+  <div class="pipeline-step">
+    <div class="step-num">⑨</div>
+    <div class="step-body"><strong>Frontend renders model competition table + forecast chart</strong><small>Snapshot hash changes → next recommendation regeneration picks up new forecast</small></div>
+  </div>
+</div>
+
+<hr class="divider" />
+<p style="text-align:center; color:#9ca3af; font-size:8.5pt; margin-top: 24px;">
+  AxBi — Graduation Project &nbsp;·&nbsp; Technical Reference &nbsp;·&nbsp; Auto-generated May 2026
+</p>
+
+</body>
+</html>

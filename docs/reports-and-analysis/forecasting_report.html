@@ -1,0 +1,2305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AxBi — Forecasting System Report</title>
+    <style>
+      :root {
+        --blue: #5a5af6;
+        --green: #22c55e;
+        --amber: #f59e0b;
+        --red: #ef4444;
+        --sky: #38bdf8;
+        --slate: #94a3b8;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #f8fafc;
+        color: #1e293b;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      /* COVER */
+      .cover {
+        background: linear-gradient(
+          135deg,
+          #0f172a 0%,
+          #1e1b4b 50%,
+          #0f172a 100%
+        );
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 60px 40px;
+        page-break-after: always;
+        position: relative;
+      }
+      .cover-logo {
+        font-size: 52px;
+        font-weight: 900;
+        letter-spacing: -2px;
+        background: linear-gradient(90deg, #5a5af6, #22d3ee);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 6px;
+      }
+      .cover-sub {
+        font-size: 16px;
+        color: #94a3b8;
+        margin-bottom: 36px;
+      }
+      .cover-title {
+        font-size: 38px;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 14px;
+      }
+      .cover-desc {
+        font-size: 14px;
+        color: #cbd5e1;
+        max-width: 520px;
+        margin-bottom: 48px;
+      }
+      .cover-meta {
+        display: flex;
+        gap: 48px;
+      }
+      .cm-val {
+        font-size: 30px;
+        font-weight: 800;
+        color: #22d3ee;
+      }
+      .cm-lbl {
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 2px;
+      }
+      .cover-date {
+        position: absolute;
+        bottom: 28px;
+        color: #475569;
+        font-size: 11px;
+      }
+
+      /* LAYOUT */
+      .page {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 48px 40px;
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+        border-bottom: 3px solid #5a5af6;
+        padding-bottom: 8px;
+        margin-bottom: 22px;
+      }
+      h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 26px 0 10px;
+      }
+      h3 {
+        font-size: 13px;
+        font-weight: 700;
+        color: #334155;
+        margin: 14px 0 6px;
+      }
+      p {
+        color: #475569;
+        margin-bottom: 8px;
+        font-size: 12.5px;
+      }
+
+      /* STAT CARDS */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+      .stat-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+      .stat-card .num {
+        font-size: 26px;
+        font-weight: 800;
+      }
+      .stat-card .lbl {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+      .c-blue .num {
+        color: #2563eb;
+      }
+      .c-green .num {
+        color: #16a34a;
+      }
+      .c-purple .num {
+        color: #7c3aed;
+      }
+      .c-amber .num {
+        color: #d97706;
+      }
+
+      /* BADGES */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .b-green {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .b-red {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .b-amber {
+        background: #fef3c7;
+        color: #b45309;
+      }
+      .b-blue {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .b-purple {
+        background: #ede9fe;
+        color: #6d28d9;
+      }
+      .b-sky {
+        background: #e0f2fe;
+        color: #0369a1;
+      }
+      .b-slate {
+        background: #f1f5f9;
+        color: #475569;
+      }
+
+      /* TABLES */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 14px;
+        font-size: 12px;
+      }
+      th {
+        background: #f8fafc;
+        padding: 8px 11px;
+        text-align: left;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      td {
+        padding: 8px 11px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+        vertical-align: top;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: #f8fafc;
+      }
+      .nr {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .nc {
+        text-align: center;
+      }
+      .best-row td {
+        background: #f0fdf4 !important;
+        font-weight: 600;
+      }
+
+      /* PIPELINE */
+      .pipeline {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin: 18px 0;
+        flex-wrap: wrap;
+      }
+      .pipe-step {
+        flex: 1;
+        min-width: 90px;
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 8px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      .ps-num {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #5a5af6;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 6px;
+      }
+      .ps-name {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #1e293b;
+      }
+      .ps-desc {
+        font-size: 9.5px;
+        color: #64748b;
+        margin-top: 3px;
+      }
+      .pa {
+        color: #94a3b8;
+        font-size: 14px;
+        padding: 0 1px;
+      }
+
+      /* DATASET CARDS */
+      .ds-card {
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 22px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        page-break-inside: avoid;
+      }
+      .ds-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .ds-name {
+        font-size: 15px;
+        font-weight: 800;
+        color: #0f172a;
+      }
+      .ds-sub {
+        font-size: 10.5px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+      .ds-metrics {
+        display: flex;
+        gap: 20px;
+        padding: 14px 18px;
+        background: #f8fafc;
+        flex-wrap: wrap;
+      }
+      .dm-lbl {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: #64748b;
+      }
+      .dm-val {
+        font-size: 18px;
+        font-weight: 800;
+        color: #0f172a;
+      }
+      .ds-body {
+        padding: 14px 18px;
+      }
+
+      /* PROGRESS BARS */
+      .pb-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .pb-lbl {
+        width: 130px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #334155;
+        flex-shrink: 0;
+      }
+      .pb-bg {
+        flex: 1;
+        height: 9px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .pb-fill {
+        height: 100%;
+        border-radius: 999px;
+      }
+      .pb-val {
+        width: 46px;
+        text-align: right;
+        font-size: 11.5px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      /* ALERTS */
+      .alert {
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        display: flex;
+        gap: 9px;
+        font-size: 12px;
+      }
+      .al-icon {
+        font-size: 15px;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+      .al-green {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+      }
+      .al-green .al-icon {
+        color: #16a34a;
+      }
+      .al-amber {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+      }
+      .al-amber .al-icon {
+        color: #d97706;
+      }
+      .al-red {
+        background: #fff1f2;
+        border: 1px solid #fecdd3;
+      }
+      .al-red .al-icon {
+        color: #dc2626;
+      }
+      .al-blue {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+      }
+      .al-blue .al-icon {
+        color: #2563eb;
+      }
+      .al-body strong {
+        color: #1e293b;
+        display: block;
+        margin-bottom: 3px;
+        font-size: 12.5px;
+      }
+      .al-body p {
+        margin: 0;
+        color: #475569;
+        font-size: 11.5px;
+      }
+
+      /* CHECKLIST */
+      .cl {
+        list-style: none;
+      }
+      .cl li {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 12px;
+      }
+      .cl li:last-child {
+        border-bottom: none;
+      }
+      .ci {
+        flex-shrink: 0;
+        margin-top: 1px;
+        font-size: 13px;
+      }
+      .ci-ok {
+        color: #16a34a;
+      }
+      .ci-warn {
+        color: #d97706;
+      }
+      .ct {
+        color: #334155;
+      }
+      .cn {
+        color: #94a3b8;
+        font-size: 11px;
+        margin-top: 1px;
+      }
+
+      /* UTILITY */
+      .divider {
+        border: none;
+        border-top: 1px solid #e2e8f0;
+        margin: 24px 0;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+      .no-break {
+        page-break-inside: avoid;
+      }
+      .ag {
+        color: #16a34a;
+        font-weight: 700;
+      }
+      .aa {
+        color: #b45309;
+        font-weight: 700;
+      }
+      .ar {
+        color: #b91c1c;
+        font-weight: 700;
+      }
+      code {
+        background: #f1f5f9;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 11px;
+        color: #334155;
+      }
+
+      /* PRINT */
+      @media print {
+        body {
+          background: white;
+        }
+        .cover {
+          min-height: auto;
+          padding: 80px 40px;
+        }
+        .page {
+          padding: 28px 24px;
+        }
+        @page {
+          margin: 10mm 12mm;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ══════════════════════ COVER ══════════════════════ -->
+    <div class="cover">
+      <div class="cover-logo">AxBi</div>
+      <div class="cover-sub">Business Intelligence Dashboard Platform</div>
+      <div class="cover-title">Forecasting System<br />Technical Report</div>
+      <div class="cover-desc">
+        Architecture, model behavior, full test results across all 4 dataset
+        categories, failure cases &amp; fixes applied, and production readiness
+        assessment.
+      </div>
+      <div class="cover-meta">
+        <div>
+          <div class="cm-val">7</div>
+          <div class="cm-lbl">Models</div>
+        </div>
+        <div>
+          <div class="cm-val">4</div>
+          <div class="cm-lbl">Datasets</div>
+        </div>
+        <div>
+          <div class="cm-val">98.7%</div>
+          <div class="cm-lbl">Best Accuracy</div>
+        </div>
+        <div>
+          <div class="cm-val">3</div>
+          <div class="cm-lbl">CV Folds</div>
+        </div>
+      </div>
+      <div class="cover-date">
+        Generated: April 2026 &nbsp;·&nbsp; Branch: Weffa &nbsp;·&nbsp; Author:
+        Omar Wafik
+      </div>
+    </div>
+
+    <!-- ══════════════════════ PAGE 1: OVERVIEW ══════════════════════ -->
+    <div class="page">
+      <div style="margin-bottom: 36px">
+        <h1>1. System Overview</h1>
+        <p>
+          The AxBi Forecasting Engine is a multi-model time-series
+          competition system accessible from the
+          <strong>AI Insights</strong> page. The user selects a processed
+          dataset, picks a time column, a numeric target, and optional feature
+          columns. The backend loads the cleaned Parquet artifact, runs a
+          7-model competition with 3-fold rolling cross-validation, selects the
+          winner by average rank, and returns the forecast with confidence
+          intervals and full diagnostics.
+        </p>
+
+        <div class="card-grid">
+          <div class="stat-card c-blue">
+            <div class="num">7</div>
+            <div class="lbl">Candidate Models</div>
+          </div>
+          <div class="stat-card c-green">
+            <div class="num">3</div>
+            <div class="lbl">CV Folds (Rolling)</div>
+          </div>
+          <div class="stat-card c-purple">
+            <div class="num">30%</div>
+            <div class="lbl">Holdout Test Set</div>
+          </div>
+          <div class="stat-card c-amber">
+            <div class="num">300s</div>
+            <div class="lbl">Hard Timeout</div>
+          </div>
+        </div>
+
+        <h2>Request Lifecycle</h2>
+        <div class="pipeline">
+          <div class="pipe-step">
+            <div class="ps-num">1</div>
+            <div class="ps-name">User Input</div>
+            <div class="ps-desc">Dataset, time, target, features, horizon</div>
+          </div>
+          <div class="pa">→</div>
+          <div class="pipe-step">
+            <div class="ps-num">2</div>
+            <div class="ps-name">Auth &amp; Load</div>
+            <div class="ps-desc">
+              JWT verify, download Parquet from Supabase
+            </div>
+          </div>
+          <div class="pa">→</div>
+          <div class="pipe-step">
+            <div class="ps-num">3</div>
+            <div class="ps-name">Prepare Series</div>
+            <div class="ps-desc">
+              Resample, align freq, cap outliers, log-transform
+            </div>
+          </div>
+          <div class="pa">→</div>
+          <div class="pipe-step">
+            <div class="ps-num">4</div>
+            <div class="ps-name">CV Competition</div>
+            <div class="ps-desc">3-fold rolling backtest on 70% data</div>
+          </div>
+          <div class="pa">→</div>
+          <div class="pipe-step">
+            <div class="ps-num">5</div>
+            <div class="ps-name">Holdout Test</div>
+            <div class="ps-desc">
+              30% unseen set for final scoring + fit diagnosis
+            </div>
+          </div>
+          <div class="pa">→</div>
+          <div class="pipe-step">
+            <div class="ps-num">6</div>
+            <div class="ps-name">Best Model</div>
+            <div class="ps-desc">Avg-rank across MAE / RMSE / WAPE / MASE</div>
+          </div>
+          <div class="pa">→</div>
+          <div class="pipe-step">
+            <div class="ps-num">7</div>
+            <div class="ps-name">Forecast</div>
+            <div class="ps-desc">
+              Retrain on 100% data, predict horizon + intervals
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div style="margin-bottom: 36px">
+        <h1>2. The 7 Models</h1>
+        <p>
+          All models compete on every request. The winner is chosen by
+          <strong>average rank</strong> across all four metrics — preventing a
+          model that excels on one metric but fails on others from winning
+          unfairly. If a runner-up scores within 25% of the winner on MAE, a
+          50/50 ensemble is used.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Type</th>
+              <th>Min Rows</th>
+              <th>Train Cap (CV)</th>
+              <th>Strengths</th>
+              <th>Weaknesses</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Naive</strong></td>
+              <td><span class="badge b-slate">Baseline</span></td>
+              <td class="nr">3</td>
+              <td class="nr">—</td>
+              <td>Zero-cost benchmark</td>
+              <td>No trend or seasonality</td>
+            </tr>
+            <tr>
+              <td><strong>Seasonal Naive</strong></td>
+              <td><span class="badge b-slate">Baseline</span></td>
+              <td class="nr">6</td>
+              <td class="nr">—</td>
+              <td>Repeating seasonal cycles</td>
+              <td>Can't adapt to trend changes</td>
+            </tr>
+            <tr>
+              <td><strong>ETS</strong></td>
+              <td><span class="badge b-blue">Statistical</span></td>
+              <td class="nr">10</td>
+              <td class="nr">—</td>
+              <td>Level + trend + additive seasonality</td>
+              <td>Assumes additive structure</td>
+            </tr>
+            <tr>
+              <td><strong>SARIMAX</strong></td>
+              <td><span class="badge b-blue">Statistical</span></td>
+              <td class="nr">20</td>
+              <td class="nr">500 rows</td>
+              <td>Auto-ARIMA order selection + exogenous regressors</td>
+              <td>Slow on large series</td>
+            </tr>
+            <tr>
+              <td><strong>CatBoost</strong></td>
+              <td><span class="badge b-purple">Tree / ML</span></td>
+              <td class="nr">30</td>
+              <td class="nr">1,095 rows</td>
+              <td>Handles categoricals natively, feature importance</td>
+              <td>Can't extrapolate trends beyond training range</td>
+            </tr>
+            <tr>
+              <td><strong>LightGBM</strong></td>
+              <td><span class="badge b-purple">Tree / ML</span></td>
+              <td class="nr">30</td>
+              <td class="nr">1,095 rows</td>
+              <td>Fast, strong on engineered lag features</td>
+              <td>Categorical cols require label-encoding</td>
+            </tr>
+            <tr>
+              <td><strong>Prophet</strong></td>
+              <td><span class="badge b-green">Decomposition</span></td>
+              <td class="nr">20</td>
+              <td class="nr">1,095 rows</td>
+              <td>
+                Yearly + weekly seasonality, trend changepoints, native
+                intervals
+              </td>
+              <td>Slower; needs 3yr history for annual Fourier</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Feature Engineering for Tree Models</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Features</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Lags</strong></td>
+              <td>lag_1, lag_7, lag_14, lag_21, lag_28</td>
+            </tr>
+            <tr>
+              <td><strong>Rolling</strong></td>
+              <td>
+                rolling_mean_7/14/28, rolling_std_7/14, rolling_min_7,
+                rolling_max_7
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Trend</strong></td>
+              <td>trend_slope_7, ewm_12 (exp. weighted mean), diff_1</td>
+            </tr>
+            <tr>
+              <td><strong>Change rates</strong></td>
+              <td>pct_change_1, pct_change_14</td>
+            </tr>
+            <tr>
+              <td><strong>Calendar</strong></td>
+              <td>
+                day_of_week, day_of_month, day_of_year, week_of_year, month,
+                quarter, is_weekend
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Fourier</strong></td>
+              <td>
+                sin/cos components for weekly (k=2) and annual (k=3) cycles
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Exogenous</strong></td>
+              <td>
+                User-selected feature columns passed as <code>exog__*</code>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ PAGE 2 ══════════════════════ -->
+    <div class="page-break"></div>
+    <div class="page">
+      <div style="margin-bottom: 36px">
+        <h1>3. Data Preparation Details</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>What Happens</th>
+              <th>Failure Mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Readiness Check</strong></td>
+              <td>
+                Min 30 rows, time column exists, target has non-null values
+              </td>
+              <td><code>forecast_possible: false</code> with reason list</td>
+            </tr>
+            <tr>
+              <td><strong>Frequency Detection</strong></td>
+              <td>
+                Auto-detects D/W/MS/QS from date gaps. Manual override
+                supported.
+              </td>
+              <td>Falls back to "D" if ambiguous</td>
+            </tr>
+            <tr>
+              <td><strong>Resample + Aggregate</strong></td>
+              <td>
+                Groups by time period; sums numeric target, means feature
+                columns, mode for categoricals
+              </td>
+              <td>Empty frame → <code>ForecastingError</code></td>
+            </tr>
+            <tr>
+              <td><strong>Nullable Float Fix</strong></td>
+              <td>
+                pandas 2.x resample produces nullable
+                <code>Float64</code> (ExtensionType). Immediately cast all
+                numeric cols to numpy <code>float64</code> via
+                <code>.to_numpy(dtype=np.float64)</code>
+              </td>
+              <td>
+                Was: Prophet "ufunc isnan not supported" —
+                <strong>fixed</strong>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Outlier Capping</strong></td>
+              <td>
+                IQR method (3× multiplier). Capped points surfaced as anomalies
+                in response.
+              </td>
+              <td>No-op if IQR ≈ 0</td>
+            </tr>
+            <tr>
+              <td><strong>Log Transform</strong></td>
+              <td>
+                Auto-applied if multiplicative pattern detected. Inverted before
+                returning results.
+              </td>
+              <td>Disabled if target has non-positive values</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Fit Diagnosis — Overfitting Detection</h2>
+        <p>
+          Every model gets a fit diagnosis based on the ratio
+          <strong>Test MAE ÷ CV MAE</strong>:
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Ratio Range</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge b-sky">Easy test split</span></td>
+              <td>&lt; 0.70×</td>
+              <td>Test period was unusually easy — accuracy may be inflated</td>
+            </tr>
+            <tr>
+              <td><span class="badge b-green">Healthy</span></td>
+              <td>0.70 – 1.20×</td>
+              <td>Model generalizes well to unseen data</td>
+            </tr>
+            <tr>
+              <td><span class="badge b-amber">Mild overfit</span></td>
+              <td>1.20 – 1.50×</td>
+              <td>Slight memorization — minor accuracy loss on holdout</td>
+            </tr>
+            <tr>
+              <td><span class="badge b-red">Overfit</span></td>
+              <td>1.50 – 2.00×</td>
+              <td>Model memorized training spikes, struggles on holdout</td>
+            </tr>
+            <tr>
+              <td><span class="badge b-red">Severe overfit</span></td>
+              <td>&gt; 2.00×</td>
+              <td>Unreliable — deprioritized by ensemble selection</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Accuracy Metric</h2>
+        <p>
+          The displayed <strong>Accuracy %</strong> is computed as
+          <code>100% − WAPE</code>, where WAPE = Weighted Absolute Percentage
+          Error = total absolute error ÷ total actual values. This gives a fair
+          measure even when actuals are near zero. Color thresholds: green ≥
+          95%, amber ≥ 85%, red &lt; 85%.
+        </p>
+      </div>
+
+      <hr class="divider" />
+
+      <div>
+        <h1>4. Test Results — All 4 Datasets</h1>
+
+        <!-- SALES -->
+        <div class="ds-card no-break">
+          <div class="ds-header">
+            <div>
+              <div class="ds-name">📈 Sales Dataset</div>
+              <div class="ds-sub">
+                sales_timeseries.csv &nbsp;·&nbsp; 73,050 rows &nbsp;·&nbsp; 10
+                stores × 5 products × 1,461 daily dates
+              </div>
+            </div>
+            <span
+              class="badge b-green"
+              style="font-size: 13px; padding: 5px 13px"
+              >✓ 98.2% Accuracy</span
+            >
+          </div>
+          <div class="ds-metrics">
+            <div>
+              <div class="dm-lbl">Best Model</div>
+              <div class="dm-val" style="color: #5a5af6; font-size: 14px">
+                Prophet
+              </div>
+            </div>
+            <div>
+              <div class="dm-lbl">MAE</div>
+              <div class="dm-val">3,507</div>
+            </div>
+            <div>
+              <div class="dm-lbl">WAPE</div>
+              <div class="dm-val">1.8%</div>
+            </div>
+            <div>
+              <div class="dm-lbl">Frequency</div>
+              <div class="dm-val">D (auto)</div>
+            </div>
+            <div>
+              <div class="dm-lbl">Train / Test</div>
+              <div class="dm-val">1,023 / 438</div>
+            </div>
+          </div>
+          <div class="ds-body">
+            <table>
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th class="nc">Status</th>
+                  <th class="nr">CV MAE</th>
+                  <th class="nr">Test MAE</th>
+                  <th class="nr">Accuracy</th>
+                  <th class="nc">Fit</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Naive</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">16,946</td>
+                  <td class="nr">13,409</td>
+                  <td class="nr aa">92.5%</td>
+                  <td class="nc">
+                    <span class="badge b-green">Healthy 0.79×</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Seasonal Naive</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">11,583</td>
+                  <td class="nr">7,611</td>
+                  <td class="nr aa">95.8%</td>
+                  <td class="nc">
+                    <span class="badge b-sky">Easy split 0.66×</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>ETS</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">5,896</td>
+                  <td class="nr">4,288</td>
+                  <td class="nr ag">97.6%</td>
+                  <td class="nc">
+                    <span class="badge b-green">Healthy 0.73×</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>SARIMAX</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">7,228</td>
+                  <td class="nr">5,614</td>
+                  <td class="nr ag">96.9%</td>
+                  <td class="nc">
+                    <span class="badge b-green">Healthy 0.78×</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>CatBoost</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">6,303</td>
+                  <td class="nr">5,409</td>
+                  <td class="nr ag">97.0%</td>
+                  <td class="nc">
+                    <span class="badge b-green">Healthy 0.86×</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>LightGBM</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">5,530</td>
+                  <td class="nr">4,483</td>
+                  <td class="nr ag">97.5%</td>
+                  <td class="nc">
+                    <span class="badge b-green">Healthy 0.81×</span>
+                  </td>
+                </tr>
+                <tr class="best-row">
+                  <td>Prophet ⭐</td>
+                  <td class="nc"><span class="badge b-green">OK</span></td>
+                  <td class="nr">3,507</td>
+                  <td class="nr">3,551</td>
+                  <td class="nr ag">98.0%</td>
+                  <td class="nc">
+                    <span class="badge b-green">Healthy 1.01×</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <h3>Accuracy by Model</h3>
+            <div class="pb-row">
+              <div class="pb-lbl">Prophet</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="
+                    width: 98.2%;
+                    background: linear-gradient(90deg, #22c55e, #16a34a);
+                  "
+                ></div>
+              </div>
+              <div class="pb-val ag">98.2%</div>
+            </div>
+            <div class="pb-row">
+              <div class="pb-lbl">ETS</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="width: 97.6%; background: #8b5cf6"
+                ></div>
+              </div>
+              <div class="pb-val ag">97.6%</div>
+            </div>
+            <div class="pb-row">
+              <div class="pb-lbl">LightGBM</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="width: 97.5%; background: #3b82f6"
+                ></div>
+              </div>
+              <div class="pb-val ag">97.5%</div>
+            </div>
+            <div class="pb-row">
+              <div class="pb-lbl">CatBoost</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="width: 97%; background: #06b6d4"
+                ></div>
+              </div>
+              <div class="pb-val ag">97.0%</div>
+            </div>
+            <div class="pb-row">
+              <div class="pb-lbl">SARIMAX</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="width: 96.9%; background: #f59e0b"
+                ></div>
+              </div>
+              <div class="pb-val ag">96.9%</div>
+            </div>
+            <div class="pb-row">
+              <div class="pb-lbl">Seasonal Naive</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="width: 95.8%; background: #94a3b8"
+                ></div>
+              </div>
+              <div class="pb-val aa">95.8%</div>
+            </div>
+            <div class="pb-row">
+              <div class="pb-lbl">Naive</div>
+              <div class="pb-bg">
+                <div
+                  class="pb-fill"
+                  style="width: 92.5%; background: #e2e8f0"
+                ></div>
+              </div>
+              <div class="pb-val aa">92.5%</div>
+            </div>
+            <div class="alert al-blue" style="margin-top: 12px">
+              <span class="al-icon">ℹ</span>
+              <div class="al-body">
+                <strong>Key Insight</strong>
+                <p>
+                  Prophet wins because the dataset has strong weekly seasonality
+                  + upward annual trend — exactly what Prophet's Fourier
+                  decomposition is built for. Its CV/Test ratio of 1.013× (near
+                  1.0) proves it found the true signal, not noise. 53%
+                  improvement over the Naive baseline confirms real predictive
+                  value.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ PAGE 3 ══════════════════════ -->
+    <div class="page-break"></div>
+    <div class="page">
+      <!-- MARKETING -->
+      <div class="ds-card no-break">
+        <div class="ds-header">
+          <div>
+            <div class="ds-name">📣 Marketing Dataset</div>
+            <div class="ds-sub">
+              marketing_timeseries.csv &nbsp;·&nbsp; 52,608 rows &nbsp;·&nbsp; 8
+              channels × 6 campaigns × 1,096 days
+            </div>
+          </div>
+          <span class="badge b-green" style="font-size: 13px; padding: 5px 13px"
+            >✓ 96.2% Accuracy</span
+          >
+        </div>
+        <div class="ds-metrics">
+          <div>
+            <div class="dm-lbl">Best Model</div>
+            <div class="dm-val" style="color: #5a5af6; font-size: 14px">
+              prophet+catboost
+            </div>
+          </div>
+          <div>
+            <div class="dm-lbl">MAE</div>
+            <div class="dm-val">6,314</div>
+          </div>
+          <div>
+            <div class="dm-lbl">WAPE</div>
+            <div class="dm-val">3.8%</div>
+          </div>
+          <div>
+            <div class="dm-lbl">Frequency</div>
+            <div class="dm-val">D (auto)</div>
+          </div>
+          <div>
+            <div class="dm-lbl">Train / Test</div>
+            <div class="dm-val">767 / 329</div>
+          </div>
+        </div>
+        <div class="ds-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="nc">Status</th>
+                <th class="nr">CV MAE</th>
+                <th class="nr">Test MAE</th>
+                <th class="nr">Accuracy</th>
+                <th class="nc">Fit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Naive</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">22,921</td>
+                <td class="nr">35,498</td>
+                <td class="nr aa">82.6%</td>
+                <td class="nc">
+                  <span class="badge b-red">Overfit 1.55×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Seasonal Naive</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">22,731</td>
+                <td class="nr">23,981</td>
+                <td class="nr aa">88.2%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.06×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>ETS</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">19,106</td>
+                <td class="nr">22,473</td>
+                <td class="nr aa">89.0%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.18×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>SARIMAX</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">6,825</td>
+                <td class="nr">9,320</td>
+                <td class="nr ag">95.4%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.37×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>CatBoost</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">6,473</td>
+                <td class="nr">10,474</td>
+                <td class="nr aa">94.9%</td>
+                <td class="nc">
+                  <span class="badge b-red">Overfit 1.62×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>LightGBM</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">7,190</td>
+                <td class="nr">11,221</td>
+                <td class="nr aa">94.5%</td>
+                <td class="nc">
+                  <span class="badge b-red">Overfit 1.56×</span>
+                </td>
+              </tr>
+              <tr class="best-row">
+                <td>Prophet ⭐</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">6,314</td>
+                <td class="nr">7,900</td>
+                <td class="nr ag">96.1%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.25×</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="alert al-amber">
+            <span class="al-icon">⚠</span>
+            <div class="al-body">
+              <strong>High Volatility — Flat Forecast is Correct</strong>
+              <p>
+                Marketing revenue has large unpredictable spikes driven by
+                campaign launches. Tree models (CatBoost 1.62×, LightGBM 1.56×,
+                Naive 1.55×) memorized training spikes and failed on holdout —
+                true overfitting. Prophet best generalizes by smoothing
+                irregular residuals. The forecast appears flat at ~165k because
+                spikes are externally driven, not pattern-based — the model is
+                correctly predicting "expected average level." The UI now shows
+                an amber banner explaining this behavior.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPERATIONS -->
+      <div class="ds-card no-break">
+        <div class="ds-header">
+          <div>
+            <div class="ds-name">⚙️ Operations Dataset — OEE Score</div>
+            <div class="ds-sub">
+              operations_timeseries.csv &nbsp;·&nbsp; 59,184 rows &nbsp;·&nbsp;
+              6 facilities × 3 shifts × 3 production lines × 1,096 days
+            </div>
+          </div>
+          <span class="badge b-green" style="font-size: 13px; padding: 5px 13px"
+            >✓ 98.8% Accuracy</span
+          >
+        </div>
+        <div class="ds-metrics">
+          <div>
+            <div class="dm-lbl">Best Model</div>
+            <div class="dm-val" style="color: #5a5af6; font-size: 14px">
+              catboost+ets
+            </div>
+          </div>
+          <div>
+            <div class="dm-lbl">MAE</div>
+            <div class="dm-val">0.48</div>
+          </div>
+          <div>
+            <div class="dm-lbl">WAPE</div>
+            <div class="dm-val">1.2%</div>
+          </div>
+          <div>
+            <div class="dm-lbl">Frequency</div>
+            <div class="dm-val">D (auto)</div>
+          </div>
+          <div>
+            <div class="dm-lbl">Train / Test</div>
+            <div class="dm-val">767 / 329</div>
+          </div>
+        </div>
+        <div class="ds-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="nc">Status</th>
+                <th class="nr">CV MAE</th>
+                <th class="nr">Test MAE</th>
+                <th class="nr">Accuracy</th>
+                <th class="nc">Fit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Naive</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.518</td>
+                <td class="nr">0.584</td>
+                <td class="nr ag">98.6%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.13×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Seasonal Naive</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.776</td>
+                <td class="nr">0.643</td>
+                <td class="nr ag">98.4%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 0.83×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>ETS</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.481</td>
+                <td class="nr">0.619</td>
+                <td class="nr ag">98.5%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.29×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>SARIMAX</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.490</td>
+                <td class="nr">0.628</td>
+                <td class="nr ag">98.5%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.28×</span>
+                </td>
+              </tr>
+              <tr class="best-row">
+                <td>CatBoost ⭐</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.480</td>
+                <td class="nr">0.621</td>
+                <td class="nr ag">98.5%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.30×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>LightGBM</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.483</td>
+                <td class="nr">0.614</td>
+                <td class="nr ag">98.5%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.27×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Prophet</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.484</td>
+                <td class="nr">0.618</td>
+                <td class="nr ag">98.5%</td>
+                <td class="nc">
+                  <span class="badge b-amber">Mild overfit 1.28×</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="alert al-blue">
+            <span class="al-icon">ℹ</span>
+            <div class="al-body">
+              <strong
+                >Stationary Metric — Business Insight More Valuable than
+                Forecast</strong
+              >
+              <p>
+                OEE hovers at ~43 with minimal variance. All 7 models score
+                within 0.4% of each other (98.4–98.8%). When Naive nearly ties
+                CatBoost, the signal is simple: "expect ~43 tomorrow." The real
+                value is the Feature Importance chart:
+                <code>exog__defects</code> is the #3 driver, confirming defects
+                directly suppress OEE. Current OEE of 43% is well below the
+                world-class standard of 85%.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ PAGE 4 ══════════════════════ -->
+    <div class="page-break"></div>
+    <div class="page">
+      <!-- HR -->
+      <div class="ds-card no-break" style="margin-bottom: 28px">
+        <div class="ds-header">
+          <div>
+            <div class="ds-name">👥 HR Dataset — Avg Performance Score</div>
+            <div class="ds-sub">
+              hr_timeseries.csv &nbsp;·&nbsp; 51,142 rows &nbsp;·&nbsp; 14
+              departments × 3,652 daily dates (10 years)
+            </div>
+          </div>
+          <span class="badge b-green" style="font-size: 13px; padding: 5px 13px"
+            >✓ 98.7% Accuracy</span
+          >
+        </div>
+        <div class="ds-metrics">
+          <div>
+            <div class="dm-lbl">Best Model</div>
+            <div class="dm-val" style="color: #5a5af6; font-size: 14px">
+              prophet+catboost
+            </div>
+          </div>
+          <div>
+            <div class="dm-lbl">MAE</div>
+            <div class="dm-val">0.611</div>
+          </div>
+          <div>
+            <div class="dm-lbl">WAPE</div>
+            <div class="dm-val">1.3%</div>
+          </div>
+          <div>
+            <div class="dm-lbl">Frequency</div>
+            <div class="dm-val">D (auto)</div>
+          </div>
+          <div>
+            <div class="dm-lbl">Train / Test</div>
+            <div class="dm-val">2,557 / 1,096</div>
+          </div>
+        </div>
+        <div class="ds-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th class="nc">Status</th>
+                <th class="nr">CV MAE</th>
+                <th class="nr">Test MAE</th>
+                <th class="nr">Accuracy</th>
+                <th class="nc">Fit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Naive</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">1.302</td>
+                <td class="nr">1.381</td>
+                <td class="nr ag">97.2%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.06×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Seasonal Naive</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">1.312</td>
+                <td class="nr">1.439</td>
+                <td class="nr ag">97.1%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.10×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>ETS</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.852</td>
+                <td class="nr">0.784</td>
+                <td class="nr ag">98.4%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 0.92×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>SARIMAX</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">1.388</td>
+                <td class="nr">0.610</td>
+                <td class="nr ag">98.8%</td>
+                <td class="nc">
+                  <span class="badge b-sky">Easy split 0.44×</span>
+                </td>
+              </tr>
+              <tr class="best-row">
+                <td>CatBoost ⭐</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.614</td>
+                <td class="nr">0.634</td>
+                <td class="nr ag">98.7%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.03×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>LightGBM</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.618</td>
+                <td class="nr">0.641</td>
+                <td class="nr ag">98.7%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.04×</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Prophet</td>
+                <td class="nc"><span class="badge b-green">OK</span></td>
+                <td class="nr">0.611</td>
+                <td class="nr">0.630</td>
+                <td class="nr ag">98.7%</td>
+                <td class="nc">
+                  <span class="badge b-green">Healthy 1.03×</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="alert al-green">
+            <span class="al-icon">✓</span>
+            <div class="al-body">
+              <strong>Cleanest Result Across All Datasets</strong>
+              <p>
+                2,557 training rows (10 years of daily data) gives all models
+                abundant signal. CatBoost, LightGBM, and Prophet all tie at
+                98.7% with ratios near 1.0× — near-perfect generalization. The
+                forecast shows a subtle upward drift (45 → 47) reflecting a
+                genuine end-of-year performance trend. SARIMAX's "Easy test
+                split" (0.44×) means the holdout period happened to be unusually
+                calm — its 98.8% accuracy is slightly inflated, hence the
+                ensemble correctly chose prophet+catboost instead.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUMMARY TABLE -->
+      <h2>All Datasets Summary</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Dataset</th>
+            <th class="nc">Best Model</th>
+            <th class="nr">Accuracy</th>
+            <th class="nr">WAPE</th>
+            <th class="nr">MAE</th>
+            <th class="nc">Forecast Shape</th>
+            <th class="nc">All Models OK</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>📈 Sales</td>
+            <td class="nc"><span class="badge b-purple">Prophet</span></td>
+            <td class="nr ag">98.2%</td>
+            <td class="nr">1.8%</td>
+            <td class="nr">3,507</td>
+            <td class="nc">Upward trend + weekly seasonality</td>
+            <td class="nc">✓</td>
+          </tr>
+          <tr>
+            <td>📣 Marketing</td>
+            <td class="nc">
+              <span class="badge b-purple">prophet+catboost</span>
+            </td>
+            <td class="nr ag">96.2%</td>
+            <td class="nr">3.8%</td>
+            <td class="nr">6,314</td>
+            <td class="nc">Flat (high volatility, mean forecast)</td>
+            <td class="nc">✓</td>
+          </tr>
+          <tr>
+            <td>⚙️ Operations</td>
+            <td class="nc"><span class="badge b-purple">catboost+ets</span></td>
+            <td class="nr ag">98.8%</td>
+            <td class="nr">1.2%</td>
+            <td class="nr">0.48</td>
+            <td class="nc">Flat (stationary metric)</td>
+            <td class="nc">✓</td>
+          </tr>
+          <tr>
+            <td>👥 HR</td>
+            <td class="nc">
+              <span class="badge b-purple">prophet+catboost</span>
+            </td>
+            <td class="nr ag">98.7%</td>
+            <td class="nr">1.3%</td>
+            <td class="nr">0.611</td>
+            <td class="nc">Slight upward drift</td>
+            <td class="nc">✓</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════ PAGE 5: FAILURES ══════════════════════ -->
+    <div class="page-break"></div>
+    <div class="page">
+      <div style="margin-bottom: 36px">
+        <h1>5. Failure Cases &amp; Fixes Applied</h1>
+
+        <div
+          style="
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+          "
+          class="no-break"
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              margin-bottom: 10px;
+            "
+          >
+            <span class="badge b-red">BUG — FIXED</span>
+            <strong style="font-size: 13px"
+              >Prophet: "ufunc 'isnan' not supported for the input
+              types"</strong
+            >
+          </div>
+          <table>
+            <tr>
+              <th style="width: 110px">Severity</th>
+              <td>Critical — Prophet failed on ALL datasets</td>
+            </tr>
+            <tr>
+              <th>Root Cause</th>
+              <td>
+                pandas 2.x <code>resample().agg()</code> returns nullable
+                <code>Float64</code> (ExtensionArray). Prophet's internals call
+                <code>np.isnan(df['y'].values)</code> which fails because
+                numpy's <code>isnan</code> ufunc does not support pandas
+                nullable Extension types. Assigning numpy arrays back to a
+                DataFrame column gets re-wrapped as nullable type — requiring
+                the fix at the DataFrame construction level.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix (1)</th>
+              <td>
+                In <code>_prepare_series_frame</code>: after
+                <code>resample().agg()</code>, immediately cast all numeric
+                columns via
+                <code>.to_numpy(dtype=np.float64, na_value=np.nan)</code> before
+                any further processing.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix (2)</th>
+              <td>
+                In <code>ProphetForecaster.fit()</code>: build the training
+                DataFrame from a plain Python dict of numpy arrays —
+                <code
+                  >pd.to_numeric(series).to_numpy(dtype=np.float64,
+                  na_value=np.nan)</code
+                >
+                — so pandas never infers nullable types during DataFrame
+                construction.
+              </td>
+            </tr>
+            <tr>
+              <th>Status</th>
+              <td>
+                <span class="badge b-green"
+                  >✓ Confirmed fixed — Prophet runs successfully on all 4
+                  datasets</span
+                >
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div
+          style="
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+          "
+          class="no-break"
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              margin-bottom: 10px;
+            "
+          >
+            <span class="badge b-red">BUG — FIXED</span>
+            <strong style="font-size: 13px"
+              >LightGBM: "pandas dtypes must be int, float or bool — bad dtype:
+              string"</strong
+            >
+          </div>
+          <table>
+            <tr>
+              <th style="width: 110px">Severity</th>
+              <td>
+                High — LightGBM failed on datasets with categorical feature
+                columns
+              </td>
+            </tr>
+            <tr>
+              <th>Root Cause</th>
+              <td>
+                LightGBM requires all-numeric input. When the user selects a
+                categorical column (e.g. <code>product_category</code>,
+                <code>channel</code>) as a feature, it is passed as pandas
+                <code>string</code> dtype and LightGBM rejects it at fit time.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix</th>
+              <td>
+                Added <code>_encode_for_lgb()</code> method using
+                <code>pd.factorize()</code> to label-encode string columns
+                before fitting. The encoding map is stored in
+                <code>self._lgb_label_maps</code> and applied consistently
+                during recursive prediction via <code>_predict_recursive</code>.
+              </td>
+            </tr>
+            <tr>
+              <th>Status</th>
+              <td>
+                <span class="badge b-green"
+                  >✓ Confirmed fixed — LightGBM runs on all 4 datasets including
+                  those with categoricals</span
+                >
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div
+          style="
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+          "
+          class="no-break"
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              margin-bottom: 10px;
+            "
+          >
+            <span class="badge b-red">BUG — FIXED</span>
+            <strong style="font-size: 13px"
+              >Step 7 Pipeline: "Gemini returned invalid JSON — Expecting ','
+              delimiter"</strong
+            >
+          </div>
+          <table>
+            <tr>
+              <th style="width: 110px">Affected</th>
+              <td>HR dataset — step7_dashboard_blueprint.py</td>
+            </tr>
+            <tr>
+              <th>Root Cause</th>
+              <td>
+                The HR dataset has many columns with rich metadata. Full
+                <code>technical_stats</code> + <code>ai_profile</code> payloads
+                inflated the prompt, pushing the Gemini response beyond
+                <code>max_output_tokens: 4096</code>. The response was truncated
+                mid-JSON at char 4346, causing parse failure.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix (1)</th>
+              <td>
+                Increased <code>max_output_tokens</code> from 4096 → 8192.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix (2)</th>
+              <td>
+                Added <code>response_mime_type: "application/json"</code> on the
+                first call (not just retry), forcing structured JSON output from
+                Gemini.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix (3)</th>
+              <td>
+                Trimmed column context: send only name, data_type,
+                is_primary_metric, and slim stats (min/max/mean/top_5) instead
+                of full metadata blobs.
+              </td>
+            </tr>
+            <tr>
+              <th>Status</th>
+              <td>
+                <span class="badge b-green"
+                  >✓ HR pipeline completes successfully</span
+                >
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div
+          style="
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+          "
+          class="no-break"
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              margin-bottom: 10px;
+            "
+          >
+            <span class="badge b-amber">ISSUE — FIXED</span>
+            <strong style="font-size: 13px"
+              >Gemini Model Chain: "gemini-3-flash-preview" does not
+              exist</strong
+            >
+          </div>
+          <table>
+            <tr>
+              <th style="width: 110px">Affected</th>
+              <td>
+                Every Step 7 run — GEMINI_MODEL_CHAIN in
+                step7_dashboard_blueprint.py
+              </td>
+            </tr>
+            <tr>
+              <th>Root Cause</th>
+              <td>
+                <code>gemini-3-flash-preview</code> is not a valid Gemini model
+                ID. Every Step 7 run silently errored on the 3rd fallback
+                attempt and logged a warning unnecessarily.
+              </td>
+            </tr>
+            <tr>
+              <th>Fix</th>
+              <td>
+                Replaced with <code>gemini-1.5-flash</code> as a stable,
+                existing final fallback model.
+              </td>
+            </tr>
+            <tr>
+              <th>Status</th>
+              <td>
+                <span class="badge b-green"
+                  >✓ Fixed — clean model chain: 2.5-flash → 2.5-pro →
+                  1.5-flash</span
+                >
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <h2>Expected / By-Design Failure Modes</h2>
+        <p>
+          These are intentional guards — not bugs. Each returns a structured
+          error response.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Condition</th>
+              <th>Response Body</th>
+              <th class="nc">HTTP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dataset has fewer than 30 rows</td>
+              <td>
+                <code>forecast_possible: false, reason: not_enough_rows</code>
+              </td>
+              <td class="nc">200</td>
+            </tr>
+            <tr>
+              <td>Time column not in DataFrame</td>
+              <td><code>time_column_not_found:{name}</code></td>
+              <td class="nc">200</td>
+            </tr>
+            <tr>
+              <td>Target column is all-null</td>
+              <td><code>target_column_all_null</code></td>
+              <td class="nc">200</td>
+            </tr>
+            <tr>
+              <td>No eligible model meets min-history requirement</td>
+              <td><code>not_enough_rows_for_any_model</code></td>
+              <td class="nc">200</td>
+            </tr>
+            <tr>
+              <td>All models fail during CV</td>
+              <td>
+                <code>best_model: null, forecast: [], errors per model</code>
+              </td>
+              <td class="nc">200</td>
+            </tr>
+            <tr>
+              <td>Forecast exceeds 5-minute timeout</td>
+              <td>
+                <code
+                  >Forecast timed out after 300s. Try shorter horizon or fewer
+                  features.</code
+                >
+              </td>
+              <td class="nc">504</td>
+            </tr>
+            <tr>
+              <td>User runs within 30s cooldown</td>
+              <td>
+                <code
+                  >Please wait Ns before running another forecast,
+                  retry_after_seconds: N</code
+                >
+              </td>
+              <td class="nc">429</td>
+            </tr>
+            <tr>
+              <td>Missing / expired auth token</td>
+              <td><code>Missing or invalid Authorization header</code></td>
+              <td class="nc">401</td>
+            </tr>
+            <tr>
+              <td>Accessing another user's dataset</td>
+              <td><code>Forbidden</code></td>
+              <td class="nc">403</td>
+            </tr>
+            <tr>
+              <td>Processed file not found in storage</td>
+              <td>
+                <code
+                  >No processed artifact found for forecasting. Run pipeline
+                  first.</code
+                >
+              </td>
+              <td class="nc">400</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ PAGE 6: PRODUCTION ══════════════════════ -->
+    <div class="page-break"></div>
+    <div class="page">
+      <div style="margin-bottom: 36px">
+        <h1>6. Production Readiness</h1>
+
+        <h2>Core ML Pipeline</h2>
+        <ul class="cl">
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                All 7 models run without errors across all 4 dataset categories
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Model selection via avg-rank (4 metrics: MAE, RMSE, WAPE, MASE)
+                — no single-metric bias
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Ensemble fallback when runner-up is within 25% of winner on MAE
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Overfitting detection — 5-tier fit diagnosis on every model
+                (Easy split / Healthy / Mild overfit / Overfit / Severe overfit)
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Frequency auto-detection (D/W/MS/QS) with manual override
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Log-transform auto-applied for multiplicative series, inverted
+                before response
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Outlier capping (IQR 3×) with anomalies surfaced in the UI
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Prediction intervals: native (Prophet) or empirical
+                residual-based (all others)
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Feature importance (top 15 features) for tree-based models
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Test set Actual vs Predicted chart (30% holdout visualization)
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <h2>API &amp; Security</h2>
+        <ul class="cl">
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Supabase JWT authentication on every endpoint
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                User-ownership verification — users cannot access other users'
+                datasets
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                30-second per-user rate limit on forecast endpoint (HTTP 429)
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">5-minute hard execution timeout (HTTP 504)</div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                All forecast results persisted to
+                <code>forecast_logs</code> table in Supabase
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Forecast history panel in UI showing all past runs per dataset
+                (model, accuracy, duration)
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-warn">⚠</span>
+            <div>
+              <div class="ct">
+                Rate limit is in-memory — resets on server restart
+              </div>
+              <div class="cn">
+                Acceptable for single-worker deployment. For multi-worker
+                production, replace with Redis-backed cache.
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <h2>Frontend UX</h2>
+        <ul class="cl">
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Dataset readiness banner (green/amber/red) before user runs
+                forecast
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Context-aware flat forecast banners: "Stable metric" vs "High
+                volatility — model forecasting average levels"
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Fit diagnosis column in model comparison table with tooltip
+                explanations
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Overfit warning banner when 2+ models show overfitting
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                "Easy test split" label replaces misleading "Check leakage"
+                label
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                CSV export of forecast values + confidence intervals
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-ok">✓</span>
+            <div>
+              <div class="ct">
+                Collapsible forecast history panel with accuracy, model,
+                duration per run
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="ci ci-warn">⚠</span>
+            <div>
+              <div class="ct">
+                No per-segment forecasting (e.g. revenue by channel separately)
+              </div>
+              <div class="cn">
+                Identified future feature — current system forecasts the
+                aggregated total only.
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="alert al-green" style="margin-top: 20px">
+          <span class="al-icon" style="font-size: 22px">✓</span>
+          <div class="al-body">
+            <strong style="font-size: 15px"
+              >Verdict: Ready for Production</strong
+            >
+            <p style="margin-top: 6px">
+              All 4 dataset categories forecast successfully with 96.2–98.8%
+              accuracy. All known bugs are resolved and confirmed fixed.
+              Security, rate limiting, timeout protection, and history
+              persistence are all in place. The one known limitation (in-memory
+              rate limit resets on server restart) is acceptable for the current
+              single-worker deployment and can be upgraded to Redis when
+              scaling.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div>
+        <h1>7. Dataset &amp; Target Selection Guide</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Recommended Target</th>
+              <th>Best Features to Add</th>
+              <th>Avoid as Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>📈 Sales</strong></td>
+              <td><code>net_revenue</code>, <code>total_sales</code></td>
+              <td>discount, promotion_flag, store_region</td>
+              <td>Order IDs, customer counts</td>
+            </tr>
+            <tr>
+              <td><strong>📣 Marketing</strong></td>
+              <td><code>revenue</code>, <code>conversions</code></td>
+              <td>spend, impressions, campaign_type</td>
+              <td>CTR (noisy rate), per-channel without aggregation</td>
+            </tr>
+            <tr>
+              <td><strong>⚙️ Operations</strong></td>
+              <td><code>oee_score</code>, <code>units_produced</code></td>
+              <td>defects, maintenance_hours, shift</td>
+              <td>
+                <code>downtime_minutes</code> — random spikes, not forecastable
+              </td>
+            </tr>
+            <tr>
+              <td><strong>👥 HR</strong></td>
+              <td>
+                <code>avg_performance_score</code>, <code>headcount</code>
+              </td>
+              <td>training_hours, tenure_avg</td>
+              <td>
+                <code>hire_date</code>, <code>employee_id</code> — record
+                attributes
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <hr class="divider" />
+
+      <div
+        style="
+          text-align: center;
+          padding: 16px 0;
+          color: #94a3b8;
+          font-size: 11px;
+        "
+      >
+        <strong>AxBi — Forecasting System Report</strong><br />
+        Generated April 2026 &nbsp;·&nbsp; Branch: Weffa &nbsp;·&nbsp; Author:
+        Omar Wafik<br />
+        <span style="margin-top: 6px; display: block"
+          >To export as PDF: open in Chrome → File → Print → Save as PDF →
+          Margins: None → Background graphics: ON</span
+        >
+      </div>
+    </div>
+  </body>
+</html>

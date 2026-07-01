@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 820" font-family="Segoe UI, system-ui, sans-serif">
+  <rect width="1280" height="820" fill="#0d1117"/>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#8b949e"/>
+    </marker>
+    <marker id="arr-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+      <path d="M8,0 L0,4 L8,8 Z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .lbl-edge {
+        font-size: 10px;
+        fill: #e6edf3;
+        stroke: #161b22;
+        stroke-width: 5;
+        paint-order: stroke fill;
+      }
+      .title { font-size: 12px; font-weight: 700; fill: #e6edf3; }
+      .sub { font-size: 9px; fill: #8b949e; }
+      .zone { font-size: 11px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- zone geometry (center column cx=630, supabase cx=172) -->
+  <!-- Client: 320,48 620x160 | Django: 320,360 620x160 | Celery: 320,580 620x220 | Supabase: 48,360 248x320 -->
+
+  <!-- 1. zone fills -->
+  <rect x="320" y="48" width="620" height="160" rx="8" fill="#161b22"/>
+  <rect x="320" y="360" width="620" height="160" rx="8" fill="#161b22"/>
+  <rect x="320" y="580" width="620" height="220" rx="8" fill="#161b22"/>
+  <rect x="48" y="360" width="248" height="320" rx="8" fill="#161b22"/>
+
+  <!-- 2. connections (endpoints stop ~6px before card edges so arrowheads stay visible) -->
+  <g fill="none" stroke="#8b949e" stroke-width="1.5">
+    <!-- React SPA -> Daphne -->
+    <path d="M490 176 L490 228 L580 228 L580 252" marker-end="url(#arr)"/>
+    <!-- Audio Worklet -> Daphne -->
+    <path d="M770 176 L770 228 L680 228 L680 252" marker-end="url(#arr)"/>
+    <!-- Daphne -> Django REST / Channels -->
+    <path d="M580 312 L580 338 L490 338 L490 384" marker-end="url(#arr)"/>
+    <path d="M680 312 L680 338 L770 338 L770 380"/>
+    <!-- Channels <-> Gemini (markers on top layer, same as SQL) -->
+    <line x1="876" y1="428" x2="984" y2="428"/>
+    <!-- Django REST <-> PostgreSQL -->
+    <line x1="376" y1="450" x2="265" y2="450" marker-start="url(#arr-start)" marker-end="url(#arr)"/>
+    <!-- Enqueue: down from REST, enter Redis from left -->
+    <path d="M490 468 L490 560 L524 560 L524 647 L537 647"/>
+    <!-- Redis -> workers -->
+    <path d="M630 670 L630 688 L492 688 L492 710" marker-end="url(#arr)"/>
+    <path d="M630 688 L767 688 L767 710" marker-end="url(#arr)"/>
+    <!-- Worker 1 <-> PostgreSQL -->
+    <path d="M391 710 L288 710 L288 450 L265 450" marker-start="url(#arr-start)" marker-end="url(#arr)"/>
+    <!-- Worker 1 <-> Storage (enters Storage from below) -->
+    <path d="M391 726 L225 726 L225 640 L172 640 L172 619" marker-start="url(#arr-start)"/>
+  </g>
+
+  <!-- 3. nodes (centered in zones) -->
+  <!-- Client: two cards centered in 620px zone -->
+  <rect x="380" y="98" width="220" height="78" rx="7" fill="#21262d" stroke="#388bfd" stroke-width="1.4"/>
+  <text x="490" y="126" text-anchor="middle" class="title">React SPA</text>
+  <text x="490" y="144" text-anchor="middle" class="sub">UI and State Management</text>
+
+  <rect x="660" y="98" width="220" height="78" rx="7" fill="#21262d" stroke="#388bfd" stroke-width="1.4"/>
+  <text x="770" y="126" text-anchor="middle" class="title">Audio Worklet</text>
+  <text x="770" y="144" text-anchor="middle" class="sub">16kHz PCM Sampling</text>
+
+  <!-- Daphne (between zones, centered on column) -->
+  <rect x="520" y="256" width="220" height="56" rx="7" fill="#21262d" stroke="#56d4dd" stroke-width="1.4"/>
+  <text x="630" y="280" text-anchor="middle" class="title">Daphne ASGI Gateway</text>
+  <text x="630" y="296" text-anchor="middle" class="sub">Routing and WebSocket Splitter</text>
+
+  <!-- Django: two cards centered -->
+  <rect x="380" y="388" width="220" height="80" rx="7" fill="#21262d" stroke="#3fb950" stroke-width="1.4"/>
+  <text x="490" y="416" text-anchor="middle" class="title">Django REST API</text>
+  <text x="490" y="434" text-anchor="middle" class="sub">Limit and Auth Middleware</text>
+
+  <rect x="660" y="388" width="220" height="80" rx="7" fill="#21262d" stroke="#3fb950" stroke-width="1.4"/>
+  <text x="770" y="416" text-anchor="middle" class="title">Django Channels</text>
+  <text x="770" y="434" text-anchor="middle" class="sub">WS Voice Proxy Gateway</text>
+
+  <!-- Gemini: external, outside Django zone -->
+  <rect x="988" y="382" width="180" height="72" rx="7" fill="#21262d" stroke="#f85149" stroke-width="1.4"/>
+  <text x="1078" y="410" text-anchor="middle" class="title">Gemini Live API</text>
+  <text x="1078" y="428" text-anchor="middle" class="sub">External Speech AI</text>
+
+  <!-- Supabase: cards centered horizontally and vertically in zone -->
+  <rect x="83" y="432" width="178" height="64" rx="7" fill="#21262d" stroke="#d29922" stroke-width="1.4"/>
+  <text x="172" y="458" text-anchor="middle" class="title">PostgreSQL Database</text>
+  <text x="172" y="474" text-anchor="middle" class="sub">Relational Data Storage</text>
+
+  <rect x="83" y="548" width="178" height="64" rx="7" fill="#21262d" stroke="#d29922" stroke-width="1.4"/>
+  <text x="172" y="574" text-anchor="middle" class="title">Storage Buckets</text>
+  <text x="172" y="590" text-anchor="middle" class="sub">Raw CSV and Parquet</text>
+
+  <!-- Celery: redis below title band, workers below redis -->
+  <rect x="540" y="618" width="180" height="58" rx="7" fill="#21262d" stroke="#a371f7" stroke-width="1.4"/>
+  <text x="630" y="642" text-anchor="middle" class="title">Redis Broker</text>
+  <text x="630" y="658" text-anchor="middle" class="sub">Async Task Queue</text>
+
+  <rect x="395" y="714" width="195" height="68" rx="7" fill="#21262d" stroke="#a371f7" stroke-width="1.4"/>
+  <text x="492" y="740" text-anchor="middle" class="title">Celery Worker 1</text>
+  <text x="492" y="758" text-anchor="middle" class="sub">Pipeline Core Steps 3-8</text>
+
+  <rect x="670" y="714" width="195" height="68" rx="7" fill="#21262d" stroke="#a371f7" stroke-width="1.4"/>
+  <text x="767" y="740" text-anchor="middle" class="title">Celery Worker 2</text>
+  <text x="767" y="758" text-anchor="middle" class="sub">Forecast Tournament</text>
+
+  <!-- 4. zone borders -->
+  <rect x="320" y="48" width="620" height="160" rx="8" fill="none" stroke="#388bfd" stroke-width="1.2" stroke-dasharray="7 4"/>
+  <rect x="320" y="360" width="620" height="160" rx="8" fill="none" stroke="#3fb950" stroke-width="1.2" stroke-dasharray="7 4"/>
+  <rect x="320" y="580" width="620" height="220" rx="8" fill="none" stroke="#a371f7" stroke-width="1.2" stroke-dasharray="7 4"/>
+  <rect x="48" y="360" width="248" height="320" rx="8" fill="none" stroke="#d29922" stroke-width="1.2" stroke-dasharray="7 4"/>
+
+  <!-- zone titles (above cards, below nothing) -->
+  <text x="630" y="68" class="zone" fill="#58a6ff">Client Browser Environment</text>
+  <text x="630" y="380" class="zone" fill="#56d364">Django Application Server</text>
+  <text x="630" y="598" class="zone" fill="#bc8cff">Celery Distributed System</text>
+  <text x="172" y="380" class="zone" fill="#e3b341">Supabase Cloud Cores</text>
+
+  <!-- 5. edge labels -->
+  <text x="535" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">HTTP/JSON</text>
+  <text x="725" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">WSS/Binary</text>
+  <text x="535" y="342" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">WSGI</text>
+  <text x="725" y="342" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">ASGI</text>
+  <text x="934" y="428" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">WSS</text>
+  <text x="320" y="450" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL</text>
+  <text x="512" y="552" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">Enqueue</text>
+  <text x="630" y="694" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">AMQP</text>
+  <text x="288" y="580" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL</text>
+  <text x="198" y="680" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">I/O</text>
+
+  <!-- 6. arrow tips above nodes (endpoints near card edges) -->
+  <g fill="none" stroke="#8b949e" stroke-width="1.5">
+    <!-- WSS bidirectional (same pattern as SQL line) -->
+    <line x1="876" y1="428" x2="984" y2="428" marker-start="url(#arr-start)" marker-end="url(#arr)"/>
+    <!-- ASGI down into Channels -->
+    <line x1="770" y1="380" x2="770" y2="386" marker-end="url(#arr)"/>
+    <!-- Enqueue into Redis from left -->
+    <line x1="537" y1="647" x2="539" y2="647" marker-end="url(#arr)"/>
+    <!-- I/O into Storage from below (arrow points up, stops before bottom border y=612) -->
+    <line x1="172" y1="619" x2="172" y2="613" marker-end="url(#arr)"/>
+  </g>
+</svg>

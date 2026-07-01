@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DEV override — auto-merged by `docker compose up` (no -f needed).
+#
+# Backend:
+#   • bind-mounts ./backend into web + workers
+#   • runserver (auto-reload) + watchmedo workers
+#   • publishes :8000
+#
+# Frontend:
+#   • Vite dev server (HMR) instead of nginx
+#   • bind-mounts ./frontend — save a file → browser updates
+#   • still at http://localhost:8080 (maps host 8080 → container 5173)
+#   • proxies /api and /ws to backend:8000 inside the compose network
+#
+# Production-style (nginx, baked bundle, no mounts):
+#   docker compose -f docker-compose.yml up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  backend:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  worker:
+    command: >
+      watchmedo auto-restart --directory=/app --pattern=*.py --recursive --
+      celery -A core worker --loglevel=info
+    volumes:
+      - ./backend:/app
+
+  worker-forecasts:
+    command: >
+      watchmedo auto-restart --directory=/app --pattern=*.py --recursive --
+      celery -A core worker --loglevel=info -Q forecasts -n forecasts@%h
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    image: axbi-frontend-dev
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    ports: !override
+      - "8080:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    env_file:
+      - path: ./frontend/.env
+        required: false
+      - path: ./.env
+        required: false
+    environment:
+      VITE_DEV_API_PROXY: http://backend:8000
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  frontend_node_modules:

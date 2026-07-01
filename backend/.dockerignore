@@ -1,0 +1,29 @@
+# Keep the build context small + secrets out of the image.
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Secrets — never bake into the image (passed at runtime via compose env).
+.env
+*.env
+
+# Local Django DB + ML scratch + audit logs
+db.sqlite3
+catboost_info/
+logs/
+
+# Data artifacts (regenerable / large)
+*.parquet
+data/*.csv
+data/*.zip
+
+# Test + tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# The polluted full freeze is not used by the image
+requirements.txt

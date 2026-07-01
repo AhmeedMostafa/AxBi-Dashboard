@@ -1,0 +1,118 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AxBi — full stack:  docker compose up --build
+#
+# Services: redis | backend (daphne) | worker | worker-forecasts | frontend (nginx)
+# App URL:  http://localhost:8080
+#
+# ── CONFIGURE YOUR KEYS (pick one approach) ─────────────────────────────────
+#
+#   A) Recommended — single root .env file (never committed):
+#        cp .env.example .env
+#        # edit .env with your Supabase + Gemini keys
+#        docker compose up --build
+#
+#   B) Inline in this file — edit x-app-config below, replace ${VAR:-} with your
+#      literal values. Do NOT commit real secrets to a public repo.
+#
+#   C) Legacy split files (still supported if present):
+#        backend/.env  +  frontend/.env
+#
+# Dev live-reload: default `docker compose up` merges docker-compose.override.yml
+#   (backend runserver + Vite frontend HMR at http://localhost:8080)
+# Production-style: docker compose -f docker-compose.yml up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Secrets (SUPABASE_*, GEMINI_*, etc.) come from env_file only — see x-backend-common.
+# Do NOT list them here with ${VAR:-} or empty values override backend/.env / root .env.
+x-app-config: &app-config
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-to-a-long-random-string}
+
+x-frontend-build-config: &frontend-build-config
+  VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+  VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+
+# Shared config for the three backend roles (web + 2 workers share one image).
+x-backend-common: &backend-common
+  build:
+    context: ./backend
+  image: axbi-backend
+  env_file:
+    - path: ./.env
+      required: false
+    - path: ./backend/.env
+      required: false
+    - path: ./frontend/.env
+      required: false
+  environment:
+    <<: *app-config
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/0
+  depends_on:
+    redis:
+      condition: service_healthy
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    <<: *backend-common
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    <<: *backend-common
+    restart: unless-stopped
+    command: celery -A core worker --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  worker-forecasts:
+    <<: *backend-common
+    restart: unless-stopped
+    command: celery -A core worker --loglevel=info -Q forecasts -n forecasts@%h
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        <<: *frontend-build-config
+    image: axbi-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  redis-data:

@@ -1,0 +1,230 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-elevated: var(--elevated);
+  --color-sales: var(--sales);
+  --color-marketing: var(--marketing);
+  --color-operations: var(--operations);
+  --color-hr: var(--hr);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.75rem;
+  /* LIGHT (default) — soft blue-grey page, white surfaces, indigo brand */
+  --background: #F7F8FB;
+  --foreground: #1A1D2B;
+  --card: #FFFFFF;
+  --card-foreground: #1A1D2B;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1D2B;
+  --elevated: #FFFFFF;
+  --primary: #5A5AF6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEF0FE;
+  --secondary-foreground: #3730A3;
+  --muted: #EFF1F6;
+  --muted-foreground: #5B6172;       /* ~5.6:1 on --background (AA body) */
+  --accent: #EEF0FE;
+  --accent-foreground: #3730A3;
+  --destructive: #DC2626;
+  --border: #E4E7EF;
+  --input: #E4E7EF;
+  --ring: #5A5AF6;
+  /* chart series + status */
+  --chart-1: #3b82f6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #06b6d4;
+  --success: #16a34a;
+  --warning: #b45309;
+  --info: #2563eb;
+  /* department accents */
+  --sales: #059669;
+  --marketing: #db2777;
+  --operations: #ea580c;
+  --hr: #2563eb;
+  /* sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1D2B;
+  --sidebar-primary: #5A5AF6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF0FE;
+  --sidebar-accent-foreground: #3730A3;
+  --sidebar-border: #E4E7EF;
+  --sidebar-ring: #5A5AF6;
+}
+
+.dark {
+  /* DARK (refined) — 3 surface tiers: bg #0B0E1A < card #12162A < popover #1A2035 */
+  --background: #0B0E1A;
+  --foreground: #E8EAF2;
+  --card: #12162A;
+  --card-foreground: #E8EAF2;
+  --popover: #1A2035;
+  --popover-foreground: #E8EAF2;
+  --elevated: #1A2035;
+  --primary: #6E6EF8;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1B1F3A;
+  --secondary-foreground: #C7CBF5;
+  --muted: #1A1F33;
+  --muted-foreground: #9AA1B5;        /* ~6:1 on --background (AA body) */
+  --accent: #1B1F3A;
+  --accent-foreground: #C7CBF5;
+  --destructive: #F87171;
+  --border: #232842;
+  --input: #232842;
+  --ring: #6E6EF8;
+  --chart-1: #60a5fa;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #a78bfa;
+  --chart-5: #22d3ee;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --sales: #34d399;
+  --marketing: #f472b6;
+  --operations: #fb923c;
+  --hr: #60a5fa;
+  --sidebar: #0B0E1A;
+  --sidebar-foreground: #E8EAF2;
+  --sidebar-primary: #6E6EF8;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1B1F3A;
+  --sidebar-accent-foreground: #C7CBF5;
+  --sidebar-border: #232842;
+  --sidebar-ring: #6E6EF8;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes float-tight {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes bar-grow {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 0.9; }
+}
+
+@keyframes wave-slim {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes spin-flat {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes logo-fade {
+  0%, 100% { opacity: 0.15; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+
+@keyframes tilt-3d {
+  0%, 100% { transform: perspective(600px) rotateY(0deg) rotateX(0deg); }
+  50% { transform: perspective(600px) rotateY(3deg) rotateX(1.5deg); }
+}
+
+@keyframes slide-in-up {
+  0% { transform: translateY(6px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes step-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes step-complete {
+  0%  {
+    opacity: 1;
+    max-height: 3rem;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    margin-bottom: 4px;
+    transform: translateX(0) scale(1);
+  }
+  42% {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    transform: translateX(-12px) scale(0.95);
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

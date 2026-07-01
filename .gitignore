@@ -1,0 +1,71 @@
+# =====================
+# Frontend (Vite / React)
+# =====================
+frontend/node_modules/
+frontend/dist/
+
+# =====================
+# Backend (Django)
+# =====================
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+*.pyc
+.env
+backend/db.sqlite3
+backend/dump.rdb
+
+# =====================
+# ML artifacts
+# =====================
+backend/catboost_info/
+
+# =====================
+# Benchmark datasets
+# =====================
+backend/data/*.csv
+backend/data/*.zip
+backend/data/store-sales/
+backend/data/superstore/
+backend/data/online-retail-ii/
+
+# Voice / TTS request audit log (large MP3 files, per-user transcripts)
+backend/logs/
+backend/logs/**
+
+# =====================
+# OS / Editor
+# =====================
+.DS_Store
+Thumbs.db
+.vscode/
+.claude/
+
+
+CLAUDE.md
+
+# =====================
+# Documentation / Thesis
+# =====================
+docs/BI_Nexus_Documentation/
+
+bash.exe.stackdump
+
+# =====================
+# Local-only scratch artifacts (generated, not part of the repo)
+# =====================
+readme-preview.html
+smoke-test-output.log
+
+# =====================
+# AI coding assistant artifacts
+# =====================
+docs/superpowers/
+.cursor/
+AGENTS.md
+
+# =====================
+# Standalone thesis/documentation repo (tracked separately, not part of code repo)
+# =====================
+BI_Nexus_Documentation/
+BI_Nexus_Documentation.rar

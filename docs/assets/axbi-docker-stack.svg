@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 560" font-family="Segoe UI, system-ui, sans-serif">
+  <rect width="1080" height="560" fill="#0d1117"/>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .lbl-edge {
+        font-size: 10px;
+        fill: #e6edf3;
+        stroke: #161b22;
+        stroke-width: 5;
+        paint-order: stroke fill;
+      }
+      .title { font-size: 13px; font-weight: 700; fill: #e6edf3; }
+      .sub { font-size: 10px; fill: #8b949e; }
+      .zone { font-size: 12px; font-weight: 700; fill: #8b949e; }
+    </style>
+  </defs>
+
+  <!-- Card geometry:
+       frontend  82-252   y 95-167  cx=167
+       backend 378-572   y 95-167  cx=475
+       redis   708-838   y 95-167  cx=773
+       worker  358-538   y 268-340 cx=448
+       w-fcast 697-877   y 268-340 cx=787
+       supabase 118-298  y 432-490 cx=208
+       gemini  782-962   y 432-490 cx=872
+       Each connection has its own dedicated y-lane in the gap between rows so
+       no line ever runs directly along (and visually merges with) a card border.
+  -->
+
+  <!-- 1. zone backgrounds -->
+  <rect x="50" y="36" width="980" height="330" rx="10" fill="#161b22"/>
+  <rect x="50" y="400" width="980" height="120" rx="10" fill="#161b22"/>
+
+  <!-- 2. connections (each edge on its own lane) -->
+  <g fill="none" stroke="#8b949e" stroke-width="1.5">
+    <!-- frontend -> backend (/api, /ws) -->
+    <line x1="252" y1="131" x2="376" y2="131"/>
+    <!-- backend -> redis (enqueue Celery tasks) -->
+    <line x1="572" y1="131" x2="706" y2="131"/>
+    <!-- backend -> Supabase (SQL / auth / storage from API) -- lane y=204, left side -->
+    <path d="M425 169 L425 204 L208 204 L208 428"/>
+    <!-- backend -> Gemini (HTTPS) -- lane y=182, routes right of worker-forecasts at x=900 -->
+    <path d="M522 169 L522 182 L900 182 L900 428 L872 428"/>
+    <!-- redis -> workers (AMQP consume) -- lane y=232, clear of both rows -->
+    <path d="M773 169 L773 232 L448 232 L448 264"/>
+    <path d="M773 232 L787 232 L787 264"/>
+    <!-- worker -> Supabase (SQL / I/O -- pipeline Steps 3-8) -- lane y=388 -->
+    <path d="M448 340 L448 388 L208 388 L208 428"/>
+    <!-- worker-forecasts -> Supabase (SQL -- forecast reads datasets) -->
+    <path d="M787 340 L787 388 L208 388"/>
+  </g>
+
+  <!-- 3. service nodes -->
+  <rect x="82" y="95" width="170" height="72" rx="7" fill="#21262d" stroke="#388bfd" stroke-width="1.4"/>
+  <text x="167" y="122" text-anchor="middle" class="title">frontend</text>
+  <text x="167" y="140" text-anchor="middle" class="sub">nginx / React</text>
+  <text x="167" y="154" text-anchor="middle" class="sub">port 8080</text>
+
+  <rect x="378" y="95" width="194" height="72" rx="7" fill="#21262d" stroke="#3fb950" stroke-width="1.4"/>
+  <text x="475" y="122" text-anchor="middle" class="title">backend</text>
+  <text x="475" y="140" text-anchor="middle" class="sub">Daphne / REST / WS</text>
+
+  <rect x="708" y="95" width="130" height="72" rx="7" fill="#21262d" stroke="#a371f7" stroke-width="1.4"/>
+  <text x="773" y="122" text-anchor="middle" class="title">redis</text>
+  <text x="773" y="140" text-anchor="middle" class="sub">Celery broker</text>
+
+  <rect x="358" y="268" width="180" height="72" rx="7" fill="#21262d" stroke="#a371f7" stroke-width="1.4"/>
+  <text x="448" y="295" text-anchor="middle" class="title">worker</text>
+  <text x="448" y="313" text-anchor="middle" class="sub">pipeline Steps 3-8</text>
+
+  <rect x="697" y="268" width="180" height="72" rx="7" fill="#21262d" stroke="#a371f7" stroke-width="1.4"/>
+  <text x="787" y="295" text-anchor="middle" class="title">worker-forecasts</text>
+  <text x="787" y="313" text-anchor="middle" class="sub">accurate forecasts</text>
+
+  <rect x="118" y="432" width="180" height="58" rx="7" fill="#21262d" stroke="#d29922" stroke-width="1.4"/>
+  <text x="208" y="456" text-anchor="middle" class="title">Supabase</text>
+  <text x="208" y="472" text-anchor="middle" class="sub">DB / auth / storage</text>
+
+  <rect x="782" y="432" width="180" height="58" rx="7" fill="#21262d" stroke="#f85149" stroke-width="1.4"/>
+  <text x="872" y="456" text-anchor="middle" class="title">Gemini API</text>
+  <text x="872" y="472" text-anchor="middle" class="sub">AI / chat / voice</text>
+
+  <!-- 4. zone borders + titles -->
+  <rect x="50" y="36" width="980" height="330" rx="10" fill="none" stroke="#484f58" stroke-width="1.2" stroke-dasharray="7 4"/>
+  <text x="540" y="60" text-anchor="middle" class="zone">Docker Compose - localhost:8080</text>
+
+  <rect x="50" y="400" width="980" height="120" rx="10" fill="none" stroke="#484f58" stroke-width="1.2" stroke-dasharray="7 4"/>
+  <text x="540" y="424" text-anchor="middle" class="zone">External (not in Compose)</text>
+
+  <!-- 5. edge labels -->
+  <text x="315" y="131" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">/api, /ws</text>
+  <text x="640" y="131" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">Celery</text>
+  <text x="316" y="204" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL</text>
+  <text x="900" y="298" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">HTTPS</text>
+  <text x="617" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">AMQP</text>
+  <text x="328" y="388" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL / I/O</text>
+
+  <!-- 6. arrow tips above cards (2px before borders) -->
+  <g fill="none" stroke="#8b949e" stroke-width="1.5">
+    <line x1="376" y1="131" x2="378" y2="131" marker-end="url(#arr)"/>
+    <line x1="706" y1="131" x2="708" y2="131" marker-end="url(#arr)"/>
+    <line x1="448" y1="264" x2="448" y2="266" marker-end="url(#arr)"/>
+    <line x1="787" y1="264" x2="787" y2="266" marker-end="url(#arr)"/>
+    <line x1="208" y1="428" x2="208" y2="430" marker-end="url(#arr)"/>
+    <line x1="872" y1="428" x2="872" y2="430" marker-end="url(#arr)"/>
+  </g>
+</svg>

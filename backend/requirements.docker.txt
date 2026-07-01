@@ -1,0 +1,74 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Web-only runtime dependencies for the AxBi backend Docker image.
+#
+# This is the curated, deployable subset of the (polluted) requirements.txt freeze.
+# It excludes desktop/scraping/packaging tooling (PyQt6, selenium, playwright,
+# pyinstaller, scapy, jupyter, customtkinter, undetected-chromedriver, etc.) that
+# the web app never imports.
+#
+# MAINTENANCE RULE: when source adds a new third-party import, add it here too.
+# Versions are pinned from the original freeze; transitive deps resolve automatically.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Web framework / API ──
+Django==6.0.1
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+
+# ── ASGI + WebSocket (voice Live proxy at /ws) ──
+channels==4.3.2
+daphne==4.2.1
+websockets==14.2
+
+# ── Async task queue ──
+celery==5.6.2
+redis==7.1.0
+
+# ── Supabase (DB / auth / storage); supabase pulls storage3/realtime/gotrue ──
+supabase==2.28.0
+postgrest==2.28.0
+
+# ── Auth token handling ──
+PyJWT==2.11.0
+cryptography==46.0.3
+
+# ── AI (Gemini) ──
+google-genai==1.0.0
+
+# ── Data / IO ──
+pandas==3.0.0
+numpy==2.4.2
+pyarrow==23.0.0
+openpyxl==3.1.5
+
+# ── Forecasting + segmentation models ──
+scikit-learn==1.6.1
+statsmodels==0.14.6
+pmdarima==2.0.4
+catboost==1.2.8
+lightgbm>=4.3.0
+prophet>=1.1.5
+matplotlib==3.10.8
+
+# ── PDF report export (WeasyPrint needs system libs — see Dockerfile) ──
+weasyprint==63.1
+xhtml2pdf==0.2.17
+
+# ── AI JSON repair (steps 5/7/8 Gemini response parsing) ──
+json-repair>=0.30.0
+
+# ── HTML / misc utilities ──
+beautifulsoup4==4.14.3
+lxml==6.0.2
+Jinja2==3.1.6
+requests==2.32.5
+httpx==0.28.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.1.0
+tenacity==9.1.4
+
+# ── Dev-mode worker auto-reload (used by docker-compose.override.yml) ──
+watchdog==6.0.0
+
+# ── In-container test runner (docker compose run backend pytest) ──
+pytest>=8.0.0
