@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8061FF"/>
+      <stop offset="1" stop-color="#5A5AF6"/>
+    </linearGradient>
+    <linearGradient id="hdrC" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6E6EF8"/>
+      <stop offset="1" stop-color="#9D7BFF"/>
+    </linearGradient>
+    <marker id="agg" markerWidth="18" markerHeight="14" refX="1" refY="6" orient="auto">
+      <path d="M1,6 L8,1 L16,6 L8,11 z" fill="#FFFFFF" stroke="#6C5CE7" stroke-width="1.4"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#FFFFFF"/>
+  <path fill="#E9EFFB" d="M0,0 H470 Q360,110 250,150 Q110,200 0,330 Z"/>
+  <g fill="#D7E2F7"><circle cx="1500" cy="855" r="9"/><circle cx="1535" cy="835" r="9"/><circle cx="1470" cy="835" r="9"/><circle cx="1505" cy="815" r="9"/></g>
+  <path fill="#E9EFFB" d="M1600,760 Q1500,790 1470,860 L1600,900 Z"/>
+
+  <text x="60" y="72" fill="#2A2A6B" font-size="40" font-weight="700">Class Diagram</text>
+  <text x="60" y="106" fill="#5566D8" font-size="22">AxBi &#8212; domain model (composition: <tspan font-style="italic">Dataset</tspan> owns its children)</text>
+
+  <!-- relationship lines first (under classes) -->
+  <g stroke="#6C5CE7" stroke-width="2" fill="none">
+    <path d="M300,290 L470,290" marker-start="url(#agg)"/>
+    <path d="M180,360 L180,640 L300,640" marker-start="url(#agg)"/>
+    <path d="M790,250 L1080,210" marker-start="url(#agg)"/>
+    <path d="M790,300 L1080,330" marker-start="url(#agg)"/>
+    <path d="M790,360 L1080,470" marker-start="url(#agg)"/>
+    <path d="M790,400 L1080,620" marker-start="url(#agg)"/>
+    <path d="M540,660 L640,660" marker-start="url(#agg)"/>
+  </g>
+  <g fill="#7A6CB5" font-size="14">
+    <text x="430" y="282">1</text><text x="445" y="282">*</text>
+    <text x="130" y="500">1..*</text>
+    <text x="1040" y="200">*</text>
+    <text x="1040" y="322">*</text>
+    <text x="1040" y="462">*</text>
+    <text x="1040" y="612">*</text>
+    <text x="560" y="652">*</text>
+  </g>
+
+  <!-- Profile -->
+  <g>
+    <rect x="120" y="220" width="180" height="140" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="120" y="220" width="180" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="120" y="238" width="180" height="16" fill="url(#hdr)"/>
+    <text x="210" y="243" fill="#fff" font-size="18" font-weight="700" text-anchor="middle">Profile</text>
+    <line x1="120" y1="290" x2="300" y2="290" stroke="#C5CBF0"/>
+    <text x="134" y="278" fill="#C08A1E" font-size="14">+ id : uuid</text>
+    <text x="134" y="312" fill="#3A3F66" font-size="14">+ name</text>
+    <text x="134" y="333" fill="#3A3F66" font-size="14">+ company</text>
+    <text x="134" y="353" fill="#2E9E73" font-size="13">FK auth.users</text>
+  </g>
+
+  <!-- Dataset (central) -->
+  <g>
+    <rect x="510" y="220" width="280" height="220" rx="10" fill="#EEF0FE" stroke="#8B6BFF" stroke-width="2.5"/>
+    <rect x="510" y="220" width="280" height="38" rx="10" fill="url(#hdrC)"/>
+    <rect x="510" y="240" width="280" height="18" fill="url(#hdrC)"/>
+    <text x="650" y="246" fill="#fff" font-size="20" font-weight="700" text-anchor="middle">Dataset</text>
+    <line x1="510" y1="300" x2="790" y2="300" stroke="#C5CBF0"/>
+    <text x="526" y="286" fill="#C08A1E" font-size="14">+ id : uuid</text>
+    <text x="526" y="322" fill="#2E9E73" font-size="14">+ user_id : FK Profile</text>
+    <text x="526" y="344" fill="#3A3F66" font-size="14">+ storage_path, processed_path</text>
+    <text x="526" y="366" fill="#3A3F66" font-size="14">+ file_info : json</text>
+    <text x="526" y="388" fill="#3A3F66" font-size="14">+ global_context : json</text>
+    <line x1="510" y1="400" x2="790" y2="400" stroke="#C5CBF0"/>
+    <text x="526" y="422" fill="#2D7DB8" font-size="14">+ runPipeline() / forecast()</text>
+  </g>
+
+  <!-- TrackingJob -->
+  <g>
+    <rect x="1080" y="150" width="260" height="110" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1080" y="150" width="260" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="1080" y="168" width="260" height="16" fill="url(#hdr)"/>
+    <text x="1210" y="173" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">TrackingJob</text>
+    <line x1="1080" y1="218" x2="1340" y2="218" stroke="#C5CBF0"/>
+    <text x="1094" y="208" fill="#2E9E73" font-size="14">+ dataset_id : FK</text>
+    <text x="1094" y="240" fill="#3A3F66" font-size="14">+ status, progress, step</text>
+  </g>
+
+  <!-- ColumnMetadata -->
+  <g>
+    <rect x="1080" y="290" width="260" height="110" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1080" y="290" width="260" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="1080" y="308" width="260" height="16" fill="url(#hdr)"/>
+    <text x="1210" y="313" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">ColumnMetadata</text>
+    <line x1="1080" y1="358" x2="1340" y2="358" stroke="#C5CBF0"/>
+    <text x="1094" y="348" fill="#2E9E73" font-size="14">+ dataset_id : FK</text>
+    <text x="1094" y="380" fill="#3A3F66" font-size="14">+ technical_stats, ai_profile</text>
+  </g>
+
+  <!-- DatasetRow -->
+  <g>
+    <rect x="1080" y="430" width="260" height="110" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1080" y="430" width="260" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="1080" y="448" width="260" height="16" fill="url(#hdr)"/>
+    <text x="1210" y="453" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">DatasetRow</text>
+    <line x1="1080" y1="498" x2="1340" y2="498" stroke="#C5CBF0"/>
+    <text x="1094" y="488" fill="#2E9E73" font-size="14">+ dataset_id : FK</text>
+    <text x="1094" y="520" fill="#3A3F66" font-size="14">+ row_index, row_data</text>
+  </g>
+
+  <!-- ForecastLog -->
+  <g>
+    <rect x="1080" y="570" width="260" height="110" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1080" y="570" width="260" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="1080" y="588" width="260" height="16" fill="url(#hdr)"/>
+    <text x="1210" y="593" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">ForecastLog</text>
+    <line x1="1080" y1="638" x2="1340" y2="638" stroke="#C5CBF0"/>
+    <text x="1094" y="628" fill="#2E9E73" font-size="14">+ dataset_id : FK</text>
+    <text x="1094" y="660" fill="#3A3F66" font-size="14">+ model, accuracy, result</text>
+  </g>
+
+  <!-- Conversation -->
+  <g>
+    <rect x="300" y="600" width="240" height="120" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="300" y="600" width="240" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="300" y="618" width="240" height="16" fill="url(#hdr)"/>
+    <text x="420" y="623" fill="#fff" font-size="17" font-weight="700" text-anchor="middle">Conversation</text>
+    <line x1="300" y1="668" x2="540" y2="668" stroke="#C5CBF0"/>
+    <text x="314" y="658" fill="#2E9E73" font-size="14">+ user_id : FK Profile</text>
+    <text x="314" y="690" fill="#3A3F66" font-size="14">+ title, share_token</text>
+  </g>
+
+  <!-- ConversationMessage -->
+  <g>
+    <rect x="640" y="600" width="280" height="130" rx="10" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="640" y="600" width="280" height="34" rx="10" fill="url(#hdr)"/>
+    <rect x="640" y="618" width="280" height="16" fill="url(#hdr)"/>
+    <text x="780" y="623" fill="#fff" font-size="16" font-weight="700" text-anchor="middle">ConversationMessage</text>
+    <line x1="640" y1="668" x2="920" y2="668" stroke="#C5CBF0"/>
+    <text x="654" y="658" fill="#2E9E73" font-size="14">+ conversation_id : FK</text>
+    <text x="654" y="690" fill="#3A3F66" font-size="14">+ role, content</text>
+    <text x="654" y="712" fill="#3A3F66" font-size="14">+ chart_data, visual_3d : json</text>
+  </g>
+
+  <!-- legend -->
+  <g font-size="15">
+    <line x1="120" y1="845" x2="180" y2="845" stroke="#6C5CE7" stroke-width="2" marker-start="url(#agg)"/>
+    <text x="195" y="850" fill="#5A6080">composition (1 owns *, ON DELETE CASCADE)</text>
+    <rect x="640" y="838" width="16" height="16" rx="3" fill="#E0A030"/>
+    <text x="664" y="851" fill="#5A6080">PK</text>
+    <rect x="710" y="838" width="16" height="16" rx="3" fill="#2E9E73"/>
+    <text x="734" y="851" fill="#5A6080">FK</text>
+  </g>
+</svg>

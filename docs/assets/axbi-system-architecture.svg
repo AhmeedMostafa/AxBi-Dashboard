@@ -54,6 +54,10 @@
     <path d="M391 710 L288 710 L288 450 L265 450" marker-start="url(#arr-start)" marker-end="url(#arr)"/>
     <!-- Worker 1 <-> Storage (enters Storage from below) -->
     <path d="M391 726 L225 726 L225 640 L172 640 L172 619" marker-start="url(#arr-start)"/>
+    <!-- Worker 2 <-> PostgreSQL -->
+    <path d="M864 710 L1020 710 L1020 478 L265 478" marker-start="url(#arr-start)" marker-end="url(#arr)"/>
+    <!-- Worker 2 <-> Storage (Parquet read for forecasts) -->
+    <path d="M864 726 L1020 726 L1020 640 L172 640 L172 619" marker-start="url(#arr-start)"/>
   </g>
 
   <!-- 3. nodes (centered in zones) -->
@@ -122,12 +126,12 @@
   <!-- 5. edge labels -->
   <text x="535" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">HTTP/JSON</text>
   <text x="725" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">WSS/Binary</text>
-  <text x="535" y="342" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">WSGI</text>
+  <text x="535" y="342" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">HTTP</text>
   <text x="725" y="342" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">ASGI</text>
   <text x="934" y="428" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">WSS</text>
   <text x="320" y="450" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL</text>
   <text x="512" y="552" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">Enqueue</text>
-  <text x="630" y="694" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">AMQP</text>
+  <text x="630" y="694" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">Tasks</text>
   <text x="288" y="580" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL</text>
   <text x="198" y="680" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">I/O</text>
 

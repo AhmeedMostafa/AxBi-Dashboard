@@ -97,7 +97,7 @@
   <text x="640" y="131" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">Celery</text>
   <text x="316" y="204" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL</text>
   <text x="900" y="298" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">HTTPS</text>
-  <text x="617" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">AMQP</text>
+  <text x="617" y="232" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">Tasks</text>
   <text x="328" y="388" text-anchor="middle" dominant-baseline="middle" class="lbl-edge">SQL / I/O</text>
 
   <!-- 6. arrow tips above cards (2px before borders) -->

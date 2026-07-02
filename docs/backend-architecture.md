@@ -165,7 +165,7 @@ Dashboard renders. Report / Forecast / Segmentation / Chat run on demand.
 
 ### Voice / chat
 
-- **`api/chat.py`** — AI assistant powered by **Gemini function-calling**. Declares ~17 tools
+- **`api/chat.py`** — AI assistant powered by **Gemini function-calling**. Declares **18** tools
   (navigate, list projects, dataset summary, query data, generate chart, 3D visual, detect
   anomalies, compare datasets, quality report, get recommendations, export PDF, forecast
   history/accuracy, run forecast, run segmentation, delete dataset, onboarding). Streams responses

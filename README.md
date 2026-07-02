@@ -199,11 +199,13 @@ Supported business domains out of the box: **Sales, Marketing, Operations, HR** 
 | Zone | Components | Protocols |
 |------|------------|-----------|
 | **Client Browser Environment** | React SPA, Audio Worklet (16 kHz PCM) | HTTP/JSON to REST; WSS/binary to voice gateway |
-| **Daphne ASGI Gateway** | Request routing, WebSocket splitter | WSGI → REST; ASGI → Channels |
-| **Django Application Server** | Django REST API (auth, rate limits), Django Channels (voice proxy) | SQL ↔ Supabase; WSS ↔ Gemini Live |
+| **Daphne ASGI Gateway** | Request routing, WebSocket splitter | HTTP → REST; ASGI → Channels |
+| **Django Application Server** | Django REST API (auth, rate limits), Django Channels (voice proxy) | SQL ↔ Supabase; WSS ↔ Gemini Live (voice) |
 | **Supabase Cloud Cores** | PostgreSQL, Storage buckets (`raw_data`, `cleaned_data`) | SQL + object I/O from API and workers |
-| **Celery Distributed System** | Redis broker, pipeline worker, forecast worker | Enqueue from API; AMQP to workers |
+| **Celery Distributed System** | Redis broker, pipeline worker, forecast worker | Enqueue from API; task dispatch via Redis |
 | **Gemini Live API** | External speech AI for real-time voice agent | Bidirectional WSS via Channels proxy |
+
+> **Reading the diagram:** Gemini Live is shown for the voice path only. Pipeline Steps 5/7/8, chat function-calling, segmentation naming, and recommendations call **Gemini REST** from the REST API or Celery Worker 1 (omitted to keep the figure readable). Both workers read/write Supabase; Worker 2 also reads cleaned **Parquet** from storage. **`fast`** forecasts run synchronously in the backend container; **`accurate`** forecasts run on `worker-forecasts`.
 
 ### Request lifecycle (upload → dashboard)
 
@@ -277,7 +279,7 @@ Protected routes require Supabase login. Public share links: `/share/:token`.
 
 The **AI Agent** page combines:
 
-- **Typed prompts** — streamed Gemini chat with function calling (same tool catalog as Conversation).
+- **Typed prompts** — streamed Gemini chat with **18 function-calling tools** (same catalog as Conversation: charts, KPIs, forecasts, navigation, PDF export, 3D visuals, …).
 - **Live voice** — Gemini Live API via secure WebSocket proxy (`/ws/live/`). The API key never reaches the browser.
 
 Voice behavior:
@@ -292,15 +294,16 @@ Voice behavior:
 
 ## 9. Forecasting
 
-`POST /api/datasets/{id}/forecast/` runs a **model tournament** on the time series:
+`POST /api/datasets/{id}/forecast/` runs a **model tournament** on the time series. Eight models are registered in code:
 
-- **Always available:** Naive, Seasonal Naive, ETS (Holt-Winters)
-- **Optional (graceful degradation):** Prophet, CatBoost, LightGBM, SARIMAX, Theta, Croston
+`naive`, `seasonal_naive`, `ets`, `exp_smoothing`, `sarimax`, `prophet`, `catboost`, `lightgbm`
 
 | Mode | Behavior |
 |------|----------|
-| **Fast** | Skips slowest models; runs **synchronously** in the request |
-| **Accurate** | Full tournament on dedicated Celery queue; poll `GET /api/forecasts/status/{job_id}/` |
+| **Fast** | Skips SARIMAX, Prophet, and CatBoost; runs **synchronously** in the backend request |
+| **Accurate** | Runs all models except SARIMAX (usually times out); **async** on dedicated Celery `forecasts` queue — poll `GET /api/forecasts/status/{job_id}/` |
+
+Winner selection uses a two-stage tournament (screen → full CV on top candidates), ranked by MAE / RMSE / WAPE / MASE. Optional **50/50 ensemble** when the runner-up is within 25% of the winner.
 
 Requires a second worker: `celery -A core worker -Q forecasts`. In Docker this is the `worker-forecasts` service.
 
@@ -347,7 +350,19 @@ Step 8 produces structured sections (Executive Summary, Key Insights, Recommenda
 
 ## 13. Supabase database schema
 
-Apply migrations in [`backend/supabase/migrations/`](backend/supabase/migrations/) first. Core tables:
+Apply migrations in [`backend/supabase/migrations/`](backend/supabase/migrations/) first.
+
+<p align="center">
+  <img src="docs/assets/db_schema_erd-nobg.png" alt="AxBi Supabase database schema ERD" width="900" style="display:block;margin:0 auto;max-width:100%;border:none;"/>
+</p>
+
+### Domain model (class diagram)
+
+<p align="center">
+  <img src="docs/assets/class_diagram-nobg.png" alt="AxBi domain model class diagram" width="900" style="display:block;margin:0 auto;max-width:100%;border:none;"/>
+</p>
+
+Core tables:
 
 ### Table `profiles`
 

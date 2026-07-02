@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8061FF"/>
+      <stop offset="1" stop-color="#5A5AF6"/>
+    </linearGradient>
+    <linearGradient id="hdrCenter" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6E6EF8"/>
+      <stop offset="1" stop-color="#9D7BFF"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6C5CE7"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="#FFFFFF"/>
+  <path fill="#E9EFFB" d="M0,0 H470 Q360,110 250,150 Q110,200 0,330 Z"/>
+  <g fill="#D7E2F7"><circle cx="1500" cy="855" r="9"/><circle cx="1535" cy="835" r="9"/><circle cx="1470" cy="835" r="9"/><circle cx="1505" cy="815" r="9"/></g>
+  <path fill="#E9EFFB" d="M1600,760 Q1500,790 1470,860 L1600,900 Z"/>
+
+  <text x="60" y="72" fill="#2A2A6B" font-size="40" font-weight="700">Database Schema</text>
+  <text x="60" y="106" fill="#5566D8" font-size="22">Supabase PostgreSQL &#183; child foreign keys to <tspan font-style="italic">datasets</tspan> are ON DELETE CASCADE</text>
+
+  <!-- relationship lines -->
+  <g stroke="#6C5CE7" stroke-width="2.5" fill="none" opacity="0.9">
+    <path d="M300,250 L300,300 L640,300 L640,360" marker-end="url(#arrow)"/>
+    <path d="M180,300 L180,640 L300,640" marker-end="url(#arrow)"/>
+    <path d="M760,430 L1060,430" marker-end="url(#arrow)"/>
+    <path d="M760,470 L960,470 L960,560 L1060,560" marker-end="url(#arrow)"/>
+    <path d="M640,560 L640,690 L1060,690" marker-end="url(#arrow)"/>
+    <path d="M560,560 L560,800 L1060,800" marker-end="url(#arrow)"/>
+    <path d="M540,690 L590,690" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="#7A6CB5" font-size="15" font-style="italic">
+    <text x="450" y="293">1 : N</text>
+    <text x="120" y="470">1 : N</text>
+    <text x="900" y="423">1 : N</text>
+    <text x="980" y="520">1 : N</text>
+    <text x="670" y="683">1 : N</text>
+    <text x="470" y="793">1 : N</text>
+  </g>
+
+  <!-- TABLE: profiles -->
+  <g>
+    <rect x="120" y="180" width="180" height="120" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="120" y="180" width="180" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="120" y="200" width="180" height="18" fill="url(#hdr)"/>
+    <text x="138" y="206" fill="#fff" font-size="19" font-weight="700">profiles</text>
+    <text x="138" y="248" fill="#C08A1E" font-size="15" font-weight="600">PK  id</text>
+    <text x="138" y="273" fill="#3A3F66" font-size="15">name, company</text>
+  </g>
+
+  <!-- TABLE: datasets (center hub) -->
+  <g>
+    <rect x="480" y="360" width="280" height="200" rx="12" fill="#EEF0FE" stroke="#8B6BFF" stroke-width="2.5"/>
+    <rect x="480" y="360" width="280" height="40" rx="12" fill="url(#hdrCenter)"/>
+    <rect x="480" y="382" width="280" height="18" fill="url(#hdrCenter)"/>
+    <text x="500" y="388" fill="#fff" font-size="21" font-weight="700">datasets</text>
+    <text x="500" y="432" fill="#C08A1E" font-size="15" font-weight="600">PK  id</text>
+    <text x="500" y="457" fill="#2E9E73" font-size="15">FK  user_id &#8594; profiles</text>
+    <text x="500" y="482" fill="#3A3F66" font-size="15">storage_path, processed_path</text>
+    <text x="500" y="507" fill="#3A3F66" font-size="15">file_info  (json)</text>
+    <text x="500" y="532" fill="#3A3F66" font-size="15">global_context  (json, per-step)</text>
+  </g>
+
+  <!-- TABLE: tracking_jobs -->
+  <g>
+    <rect x="1060" y="380" width="270" height="110" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1060" y="380" width="270" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="1060" y="400" width="270" height="18" fill="url(#hdr)"/>
+    <text x="1078" y="406" fill="#fff" font-size="19" font-weight="700">tracking_jobs</text>
+    <text x="1078" y="448" fill="#2E9E73" font-size="15">FK  dataset_id</text>
+    <text x="1078" y="473" fill="#3A3F66" font-size="15">status, progress, current_step</text>
+  </g>
+
+  <!-- TABLE: columns_metadata -->
+  <g>
+    <rect x="1060" y="510" width="270" height="110" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1060" y="510" width="270" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="1060" y="530" width="270" height="18" fill="url(#hdr)"/>
+    <text x="1078" y="536" fill="#fff" font-size="19" font-weight="700">columns_metadata</text>
+    <text x="1078" y="578" fill="#2E9E73" font-size="15">FK  dataset_id</text>
+    <text x="1078" y="603" fill="#3A3F66" font-size="15">technical_stats, ai_profile</text>
+  </g>
+
+  <!-- TABLE: dataset_rows -->
+  <g>
+    <rect x="1060" y="640" width="270" height="110" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1060" y="640" width="270" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="1060" y="660" width="270" height="18" fill="url(#hdr)"/>
+    <text x="1078" y="666" fill="#fff" font-size="19" font-weight="700">dataset_rows</text>
+    <text x="1078" y="708" fill="#2E9E73" font-size="15">FK  dataset_id</text>
+    <text x="1078" y="733" fill="#3A3F66" font-size="15">row_index, row_data  (sample)</text>
+  </g>
+
+  <!-- TABLE: forecast_logs -->
+  <g>
+    <rect x="1060" y="770" width="270" height="100" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="1060" y="770" width="270" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="1060" y="790" width="270" height="18" fill="url(#hdr)"/>
+    <text x="1078" y="796" fill="#fff" font-size="19" font-weight="700">forecast_logs</text>
+    <text x="1078" y="838" fill="#2E9E73" font-size="15">FK  dataset_id</text>
+    <text x="1078" y="861" fill="#3A3F66" font-size="14">model, accuracy, horizon, result</text>
+  </g>
+
+  <!-- TABLE: conversations -->
+  <g>
+    <rect x="300" y="600" width="240" height="110" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="300" y="600" width="240" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="300" y="620" width="240" height="18" fill="url(#hdr)"/>
+    <text x="318" y="626" fill="#fff" font-size="19" font-weight="700">conversations</text>
+    <text x="318" y="668" fill="#2E9E73" font-size="15">FK  user_id &#8594; profiles</text>
+    <text x="318" y="693" fill="#3A3F66" font-size="15">title, share_token</text>
+  </g>
+
+  <!-- TABLE: conversation_messages -->
+  <g>
+    <rect x="590" y="630" width="270" height="120" rx="12" fill="#F4F6FE" stroke="#C5CBF0" stroke-width="1.5"/>
+    <rect x="590" y="630" width="270" height="38" rx="12" fill="url(#hdr)"/>
+    <rect x="590" y="650" width="270" height="18" fill="url(#hdr)"/>
+    <text x="608" y="656" fill="#fff" font-size="18" font-weight="700">conversation_messages</text>
+    <text x="608" y="698" fill="#2E9E73" font-size="15">FK  conversation_id</text>
+    <text x="608" y="723" fill="#3A3F66" font-size="15">role, content</text>
+    <text x="608" y="745" fill="#3A3F66" font-size="14">chart_data, visual_3d  (json)</text>
+  </g>
+
+  <!-- legend -->
+  <g>
+    <rect x="120" y="820" width="16" height="16" rx="3" fill="#E0A030"/>
+    <text x="144" y="833" fill="#5A6080" font-size="15">PK</text>
+    <rect x="190" y="820" width="16" height="16" rx="3" fill="#2E9E73"/>
+    <text x="214" y="833" fill="#5A6080" font-size="15">FK</text>
+    <line x1="270" y1="828" x2="320" y2="828" stroke="#6C5CE7" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <text x="330" y="833" fill="#5A6080" font-size="15">one-to-many (CASCADE delete)</text>
+  </g>
+</svg>
