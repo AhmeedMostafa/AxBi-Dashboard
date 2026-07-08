@@ -62,6 +62,8 @@ def process_file_to_parquet(user_id: str, storage_path: str) -> str:
         df, _encoding = _read_csv_with_fallback(raw_bytes)
     elif ext in [".xlsx", ".xls"]:
         df = pd.read_excel(io.BytesIO(raw_bytes))
+    elif ext == ".parquet":
+        df = pd.read_parquet(io.BytesIO(raw_bytes))
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
@@ -95,3 +97,29 @@ def process_file_to_parquet(user_id: str, storage_path: str) -> str:
     return cleaned_path
 
     # ====================end====================
+
+
+def clean_bytes_to_frame(raw_bytes: bytes, filename: str) -> pd.DataFrame:
+    """
+    Run Step 3 cleaning on raw file bytes and return the cleaned DataFrame — same
+    logic as ``process_file_to_parquet`` but without any download/upload. Used by the
+    incremental append pipeline to clean ONLY the newly-appended file.
+    """
+    _, ext = os.path.splitext(filename.lower())
+    if ext == ".csv":
+        df, _encoding = _read_csv_with_fallback(raw_bytes)
+    elif ext in (".xlsx", ".xls"):
+        df = pd.read_excel(io.BytesIO(raw_bytes))
+    elif ext == ".parquet":
+        df = pd.read_parquet(io.BytesIO(raw_bytes))
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+    df_clean = preprocess_dataframe(df)
+
+    # Match process_file_to_parquet: lossless integer downcast so concat dtypes line up
+    # with the existing cleaned parquet.
+    for _col in df_clean.select_dtypes(include=["int", "int64"]).columns:
+        df_clean[_col] = pd.to_numeric(df_clean[_col], downcast="integer")
+
+    return df_clean

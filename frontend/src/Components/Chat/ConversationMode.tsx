@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../supabase-client'
 import { LiveClient, type LiveStatus, type LiveAction } from '../../lib/liveClient'
-import { mergeLiveTranscript, mergeAssistantTranscript } from '../../lib/liveTranscript'
+import { mergeAssistantTranscript, mergeFilteredUserTranscript } from '../../lib/liveTranscript'
 import AudioWaveform from './AudioWaveform'
 import ChatChartRenderer from '../Conversation/ChatChart'
 import { useGeneratedAssets, type GeneratedAsset } from '../../context/GeneratedAssetsContext'
@@ -76,9 +76,13 @@ export default function ConversationMode({ onClose, language, onLanguageChange, 
     },
     onUserTranscript: (t: string) => {
       if (!t) return
-      setUserText((prev) => (
-        lastSpeakerRef.current === 'user' ? mergeLiveTranscript(prev, t) : t
-      ))
+      const lang = activeLangRef.current
+      setUserText((prev) => {
+        const merged = lastSpeakerRef.current === 'user'
+          ? mergeFilteredUserTranscript(prev, t, lang)
+          : mergeFilteredUserTranscript('', t, lang)
+        return merged
+      })
       if (lastSpeakerRef.current !== 'user') setAssistantText('')
       lastSpeakerRef.current = 'user'
     },
@@ -226,6 +230,7 @@ export default function ConversationMode({ onClose, language, onLanguageChange, 
   const orbClass = {
     connecting: 'scale-100 opacity-40',
     listening: 'scale-110 opacity-80',
+    processing: 'scale-105 opacity-70',
     speaking: 'scale-125 opacity-100',
     closed: 'scale-90 opacity-30',
     error: 'scale-90 opacity-40',
@@ -234,6 +239,7 @@ export default function ConversationMode({ onClose, language, onLanguageChange, 
   const statusLabel = {
     connecting: isAr ? 'بنتوصل...' : 'Connecting...',
     listening: isAr ? 'بسمعك...' : 'Listening...',
+    processing: isAr ? 'بجهّز...' : 'Processing...',
     speaking: isAr ? 'بتكلم...' : 'Speaking...',
     closed: isAr ? 'خلصت' : 'Ended',
     error: isAr ? 'في مشكلة' : 'Error',

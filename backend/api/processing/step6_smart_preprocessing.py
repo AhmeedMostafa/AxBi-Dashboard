@@ -337,15 +337,19 @@ def _apply_measure(
     min_conversion_success: float,
     max_fill_null_ratio: float,
 ) -> dict[str, Any]:
-    if _is_financial_measure(ai_profile, series.name):
-        parsed = _parse_financial_numeric(series)
-        transforms = ["financial_numeric_parse"]
-    else:
-        parsed = pd.to_numeric(series, errors="coerce")
-        transforms = ["numeric_parse"]
+    financial = _is_financial_measure(ai_profile, series.name)
+    transforms = ["financial_numeric_parse"] if financial else ["numeric_parse"]
 
-    # Use float-capable dtype for measures to avoid Int64 + decimal fill failures.
-    parsed = pd.to_numeric(parsed, errors="coerce").astype("Float64")
+    if pd.api.types.is_numeric_dtype(series):
+        # Step 3 already typed this column numeric; the string/regex financial parse
+        # would reproduce the same values at ~5x the cost. Cast straight to Float64.
+        parsed = series.astype("Float64")
+    elif financial:
+        parsed = _parse_financial_numeric(series)
+        # Use float-capable dtype for measures to avoid Int64 + decimal fill failures.
+        parsed = pd.to_numeric(parsed, errors="coerce").astype("Float64")
+    else:
+        parsed = pd.to_numeric(series, errors="coerce").astype("Float64")
 
     success = _conversion_success(series, parsed)
     if success < min_conversion_success:
@@ -383,7 +387,11 @@ def _apply_date(
     *,
     min_conversion_success: float,
 ) -> dict[str, Any]:
-    parsed = pd.to_datetime(series, errors="coerce", format="mixed")
+    if pd.api.types.is_datetime64_any_dtype(series):
+        # Already a datetime column out of Step 3 — re-parsing is a no-op.
+        parsed = series
+    else:
+        parsed = pd.to_datetime(series, errors="coerce", format="mixed")
     success = _conversion_success(series, parsed)
     transforms = ["datetime_parse"]
 
@@ -564,12 +572,18 @@ def _enforce_type_conformance(
     action = "none"
 
     if target_type == "numeric":
-        transformed = _parse_best_numeric(series).astype("Float64")
+        if pd.api.types.is_numeric_dtype(series):
+            transformed = series.astype("Float64")
+        else:
+            transformed = _parse_best_numeric(series).astype("Float64")
         invalid_mask = _non_empty_mask(series) & transformed.isna()
         action = "set_invalid_numeric_to_null" if int(invalid_mask.sum()) > 0 else "none"
         transforms = ["enforce_numeric_type"]
     elif target_type == "datetime":
-        transformed = pd.to_datetime(series, errors="coerce", format="mixed")
+        if pd.api.types.is_datetime64_any_dtype(series):
+            transformed = series
+        else:
+            transformed = pd.to_datetime(series, errors="coerce", format="mixed")
         invalid_mask = _non_empty_mask(series) & transformed.isna()
         action = "set_invalid_datetime_to_null" if int(invalid_mask.sum()) > 0 else "none"
         transforms = ["enforce_datetime_type"]
@@ -620,6 +634,14 @@ def _enforce_type_conformance(
 
 
 def _non_empty_mask(series: pd.Series) -> pd.Series:
+    # For non-text dtypes a value is "non-empty" iff it is not null — no string cast
+    # needed (numbers/dates/bools never stringify to "").
+    if (
+        pd.api.types.is_numeric_dtype(series)
+        or pd.api.types.is_datetime64_any_dtype(series)
+        or pd.api.types.is_bool_dtype(series)
+    ):
+        return series.notna()
     text = series.astype("string").str.strip()
     return text.notna() & (text != "")
 

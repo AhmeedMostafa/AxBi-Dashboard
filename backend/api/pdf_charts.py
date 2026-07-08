@@ -606,3 +606,114 @@ _RENDERERS = {
     "kpi_card": _render_kpi,
     "radial": _render_kpi,
 }
+
+
+# ══════════════════════════════════════════════════════════════
+# Report-only renderers (forecast + correlation)
+# ══════════════════════════════════════════════════════════════
+
+def render_forecast_chart(forecast_data: dict) -> str | None:
+    """Render a saved forecast (projection line + 95% confidence band) to base64 PNG.
+
+    `forecast_data` = {forecast:[{date,value}], prediction_intervals:[{date,lower,upper}],
+    historical?:[{date,value}]}. Returns None if there are no forecast points.
+    """
+    try:
+        fd = forecast_data or {}
+        forecast = fd.get("forecast") or []
+        if not forecast:
+            return None
+        intervals = fd.get("prediction_intervals") or []
+        historical = fd.get("historical") or []
+
+        f_dates = [str(p.get("date", "")) for p in forecast]
+        f_vals = [_parse_numeric(p.get("value")) for p in forecast]
+
+        fig, ax = _new_figure(width=CHART_WIDTH, height=2.4)
+
+        # Confidence band (aligned to forecast points by index)
+        if intervals:
+            lo = [_parse_numeric(iv.get("lower")) for iv in intervals]
+            hi = [_parse_numeric(iv.get("upper")) for iv in intervals]
+            n = min(len(f_dates), len(lo), len(hi))
+            if n and all(v is not None for v in lo[:n] + hi[:n]):
+                ax.fill_between(range(n), lo[:n], hi[:n], color=BRAND_PRIMARY,
+                                alpha=0.12, linewidth=0, label="95% Confidence")
+
+        # Historical (if present) then forecast, on a shared index
+        x_labels = f_dates
+        if historical:
+            h_vals = [_parse_numeric(p.get("value")) for p in historical]
+            h_dates = [str(p.get("date", "")) for p in historical]
+            hx = list(range(len(h_vals)))
+            fx = list(range(len(h_vals), len(h_vals) + len(f_vals)))
+            ax.plot(hx, h_vals, color="#22d3ee", linewidth=1.6, label="Historical")
+            ax.plot(fx, f_vals, color=BRAND_PRIMARY, linewidth=1.6,
+                    linestyle="--", label="Forecast")
+            x_labels = h_dates + f_dates
+            tick_idx = hx + fx
+        else:
+            fx = list(range(len(f_vals)))
+            ax.plot(fx, f_vals, color=BRAND_PRIMARY, linewidth=1.6,
+                    linestyle="--", label="Forecast")
+            tick_idx = fx
+
+        # Thin the x tick labels so they stay legible
+        step = max(1, len(tick_idx) // 8)
+        ax.set_xticks(tick_idx[::step])
+        ax.set_xticklabels([x_labels[i][5:] if len(x_labels[i]) > 5 else x_labels[i]
+                            for i in range(0, len(x_labels), step)], rotation=0)
+        _style_axes(ax)
+        ax.legend(fontsize=6, loc="best", frameon=False)
+        return _fig_to_base64(fig)
+    except Exception:
+        logger.exception("pdf_charts: failed to render forecast chart")
+        return None
+
+
+def render_correlation_heatmap(df, max_cols: int = 12) -> str | None:
+    """Render a numeric-correlation heatmap (RdBu_r) to base64 PNG.
+
+    Returns None if fewer than 2 numeric columns. Caps to the `max_cols` highest-
+    variance columns so the matrix stays readable.
+    """
+    try:
+        num = df.select_dtypes(include="number")
+        # Drop constant / all-null columns (no correlation signal)
+        num = num.loc[:, num.nunique(dropna=True) > 1]
+        if num.shape[1] < 2:
+            return None
+        if num.shape[1] > max_cols:
+            top = num.var(numeric_only=True).sort_values(ascending=False).head(max_cols).index
+            num = num[list(top)]
+
+        corr = num.corr(numeric_only=True)
+        labels = [str(c) for c in corr.columns]
+        n = len(labels)
+
+        fig, ax = _new_figure(width=CHART_WIDTH, height=CHART_WIDTH * 0.82)
+        im = ax.imshow(corr.values, cmap="RdBu_r", vmin=-1, vmax=1, aspect="auto")
+
+        ax.set_xticks(range(n))
+        ax.set_yticks(range(n))
+        short = [(lbl[:14] + "…") if len(lbl) > 15 else lbl for lbl in labels]
+        ax.set_xticklabels(short, rotation=45, ha="right", fontsize=6, color=TEXT_MUTED)
+        ax.set_yticklabels(short, fontsize=6, color=TEXT_MUTED)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.grid(False)
+
+        # Annotate cells only when the matrix is small enough to stay readable
+        if n <= 8:
+            for i in range(n):
+                for j in range(n):
+                    v = corr.values[i, j]
+                    ax.text(j, i, f"{v:.2f}", ha="center", va="center",
+                            fontsize=5.5, color="#0f172a" if abs(v) < 0.6 else "#ffffff")
+
+        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.ax.tick_params(labelsize=6, colors=TEXT_MUTED)
+        return _fig_to_base64(fig)
+    except Exception:
+        logger.exception("pdf_charts: failed to render correlation heatmap")
+        return None

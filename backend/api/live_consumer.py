@@ -42,6 +42,7 @@ import websockets
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from .supabase_client import verify_supabase_token
+from .live_transcript_filter import user_transcript_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +126,9 @@ def _build_system_instruction(dataset_id: str | None, lang: str) -> str:
         rules = (
             "\n\nVOICE CONVERSATION MODE (Egyptian Arabic / المصري):\n"
             "- The user is SPEAKING to you and HEARING your spoken reply in real time.\n"
-            "- The user speaks Egyptian Arabic (ar-EG). Transcribe their speech as Egyptian Arabic — "
-            "never as English, Italian, or other languages.\n"
+            "- The user speaks Egyptian Arabic (ar-EG). Transcribe their speech ONLY in Arabic script "
+            "(Egyptian Arabic). NEVER transcribe as Hindi, Devanagari, English, Italian, or other languages.\n"
+            "- CRITICAL: All input transcription text you produce must be in Arabic script matching ar-EG.\n"
             "- Reply ONLY in casual, natural Egyptian Arabic (Masri). NEVER use Fusha / MSA.\n"
             "- Keep replies SHORT and spoken: 1-2 sentences, ~40 words max.\n"
             "- No markdown, lists, code, or headings — just plain conversational speech.\n"
@@ -153,7 +155,8 @@ def _build_system_instruction(dataset_id: str | None, lang: str) -> str:
         rules = (
             "\n\nVOICE CONVERSATION MODE:\n"
             "- The user is SPEAKING to you and HEARING your spoken reply in real time.\n"
-            "- The user speaks English (en-US). Transcribe their speech as English.\n"
+            "- The user speaks English (en-US). Transcribe their speech ONLY in English.\n"
+            "- NEVER transcribe user speech as Hindi, Devanagari, Arabic, or other languages.\n"
             "- Keep replies SHORT and spoken: 1-2 sentences, ~40 words max.\n"
             "- No markdown, lists, code, or headings — just plain conversational speech.\n"
             "- Be warm, friendly and natural, like talking, not writing.\n"
@@ -377,10 +380,18 @@ class LiveProxyConsumer(AsyncWebsocketConsumer):
         if sc:
             if sc.get("interrupted"):
                 await self._safe_send({"type": "interrupted"})
-            # User speech transcript
+            # User speech transcript (drop wrong-script hallucinations from Live STT).
             it = sc.get("inputTranscription") or {}
             if it.get("text"):
-                await self._safe_send({"type": "user_transcript", "text": it["text"]})
+                utext = it["text"]
+                if user_transcript_allowed(utext, self.lang):
+                    await self._safe_send({"type": "user_transcript", "text": utext})
+                else:
+                    logger.debug(
+                        "Live: dropped user transcript (lang=%s): %s",
+                        self.lang,
+                        utext[:80],
+                    )
             # Assistant speech transcript
             ot = sc.get("outputTranscription") or {}
             if ot.get("text"):

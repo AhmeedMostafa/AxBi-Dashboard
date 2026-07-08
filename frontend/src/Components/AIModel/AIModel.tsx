@@ -329,7 +329,11 @@ function detectDefaultTargetColumn(
   timeColumn: string,
   metadata: ColumnMeta[] = [],
 ): string {
-  const metaByKey = new Map(metadata.map((c) => [columnMetaKey(c), c]).filter(([k]) => k))
+  const metaByKey = new Map<string, ColumnMeta>()
+  for (const col of metadata) {
+    const key = columnMetaKey(col)
+    if (key) metaByKey.set(key, col)
+  }
 
   const isNumericCol = (key: string): boolean => {
     const m = metaByKey.get(key)

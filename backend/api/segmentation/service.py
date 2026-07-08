@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time
 from datetime import datetime, UTC
@@ -30,6 +31,14 @@ logger = logging.getLogger(__name__)
 SEGMENTATION_MAX_ROWS = 50000
 # Hard wall on the clustering fit so it can't hang a worker on pathological data.
 SEGMENTATION_TIMEOUT_S = 120
+# Entity-level Pareto curve is capped for readability + payload size.
+PARETO_MAX_POINTS = 40
+# Evidence-strength heuristics for grounding the Gemini insight prompt. Below this
+# entity count the sample is flagged "small"; segments whose primary metric are
+# within this relative % are flagged "marginally separated". Tunable — they only
+# change how much the prompt hedges, never the math.
+SEG_SMALL_N = 30
+SEG_MARGIN_PCT = 10
 
 
 def _run_with_timeout(fn, timeout_seconds: int, *args, **kwargs):
@@ -182,7 +191,7 @@ def run_segmentation_service(
     try:
         _ensure_gemini()
         ai_result = _generate_segment_insights(
-            segments_summary, category_hint or "Business", method, detection
+            segments_summary, category_hint or "Business", method, detection, method_meta
         )
     except Exception as e:
         logger.warning("Segmentation AI insights failed: %s", e)
@@ -198,6 +207,8 @@ def run_segmentation_service(
 
     # Build pre-computed chart data
     charts = _build_chart_data(segments_summary, method)
+    if method == "abc":
+        charts.append(_build_pareto_chart(segments_df))
 
     duration_ms = int((time.time() - start_ms) * 1000)
 
@@ -221,6 +232,29 @@ def run_segmentation_service(
 # ENTITY & STRATEGY DETECTION
 # ══════════════════════════════════════════════════════════════
 
+# Names that signal a non-additive (rate/ratio/%/average) metric — summing them
+# is meaningless, so ABC must not pick them as its value column.
+_NON_ADDITIVE_NAME_RE = re.compile(
+    r"(rate|ratio|percent|pct|margin|\baverage\b|\bavg\b|\bmean\b)", re.I
+)
+
+
+def _is_non_additive_measure(name: str, ai: dict, stats: dict) -> bool:
+    """True for rate/ratio/%/average-style columns that must not be summed."""
+    agg = str(ai.get("suggested_aggregation", "")).lower()
+    if agg in ("avg", "mean", "average"):
+        return True
+    if _NON_ADDITIVE_NAME_RE.search(name or ""):
+        return True
+    try:
+        mn, mx = stats.get("min"), stats.get("max")
+        if mn is not None and mx is not None and float(mn) >= 0 and float(mx) <= 1:
+            return True  # bounded fraction → ratio
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
 def _detect_entity_and_strategy(
     columns_metadata: list[dict],
     category_hint: str | None,
@@ -236,11 +270,13 @@ def _detect_entity_and_strategy(
     id_cols = []
     date_cols = []
     measure_cols = []
+    additive_measures = []   # subset of measure_cols safe to sum (ABC value candidates)
     dimension_cols = []
     all_numeric = []
 
     for col in columns_metadata:
         ai = _parse_json_maybe(col.get("ai_profile"))
+        stats = _parse_json_maybe(col.get("technical_stats")) or {}
         role = str(ai.get("role", "")).lower()
         data_type = str(col.get("data_type", "")).lower()
         name = col.get("clean_name") or col.get("original_name") or ""
@@ -252,10 +288,15 @@ def _detect_entity_and_strategy(
             date_cols.append(name)
         if role == "measure" or data_type == "numeric":
             all_numeric.append(name)
+            non_additive = _is_non_additive_measure(name, ai, stats)
             if is_primary:
                 measure_cols.insert(0, name)
+                if not non_additive:
+                    additive_measures.insert(0, name)
             else:
                 measure_cols.append(name)
+                if not non_additive:
+                    additive_measures.append(name)
         if role in ("dimension", "descriptive", "geographic"):
             dimension_cols.append(name)
 
@@ -270,13 +311,15 @@ def _detect_entity_and_strategy(
             "monetary_column": measure_cols[0],
         }
 
-    # Strategy 2: ABC if we have a dimension and a value column
+    # Strategy 2: ABC if we have a dimension and an ADDITIVE value column.
+    # ABC sums the value per entity, so a non-additive metric (rate/ratio/%) is
+    # excluded — such datasets fall through to K-Means (groups without summing).
     entity_for_abc = dimension_cols[0] if dimension_cols else (id_cols[0] if id_cols else None)
-    if entity_for_abc and measure_cols:
+    if entity_for_abc and additive_measures:
         return {
             "method": "abc",
             "entity_column": entity_for_abc,
-            "value_column": measure_cols[0],
+            "value_column": additive_measures[0],
         }
 
     # Strategy 3: K-Means fallback
@@ -370,7 +413,8 @@ def _build_abc_summary(abc_df: pd.DataFrame) -> list[dict]:
             "size": int(len(group)),
             "percentage": round(len(group) / total * 100, 1),
             "avg_metrics": {
-                "total_value": _safe_json_value(group["total_value"].mean()),
+                # Segment SUM (not per-entity mean) so it reconciles with value_share.
+                "total_value": _safe_json_value(group["total_value"].sum()),
                 "value_share": _safe_json_value(group["total_value"].sum() / total_value * 100),
             },
             "top_entities": top_entities,
@@ -423,6 +467,32 @@ def _build_scatter_data(result_df: pd.DataFrame) -> list[dict]:
 # CHART DATA BUILDER
 # ══════════════════════════════════════════════════════════════
 
+def _build_pareto_chart(abc_df: pd.DataFrame) -> dict:
+    """Entity-level Pareto curve from the (already value-desc-sorted) ABC frame.
+
+    Both series are percentages of the grand total so they share ONE 0–100 axis
+    (no dual-axis): bar = each entity's individual value share, line = cumulative
+    share (precomputed over ALL entities upstream, so accurate where drawn).
+    """
+    grand_total = float(abc_df["total_value"].sum()) or 1.0
+    head = abc_df.head(PARETO_MAX_POINTS)
+    data = [
+        {
+            "entity": str(r["entity"]),
+            "value_share": _safe_json_value(r["total_value"] / grand_total * 100),
+            "cumulative_pct": _safe_json_value(r["cumulative_pct"]),
+            "total_value": _safe_json_value(r["total_value"]),
+            "segment": str(r["segment"]),
+        }
+        for _, r in head.iterrows()
+    ]
+    return {
+        "chart_type": "pareto",
+        "title": "Pareto Analysis — Cumulative Value",
+        "data": data,
+    }
+
+
 def _build_chart_data(segments: list[dict], method: str) -> list[dict]:
     """Build pre-computed chart data for the frontend."""
     charts = []
@@ -435,24 +505,21 @@ def _build_chart_data(segments: list[dict], method: str) -> list[dict]:
         "data": pie_data,
     })
 
-    # Bar chart: segment sizes
-    bar_data = [{"label": s["name"], "value": s["size"]} for s in segments]
-    charts.append({
-        "chart_type": "bar",
-        "title": "Entities per Segment",
-        "data": bar_data,
-    })
-
-    # Bar chart: primary metric by segment
+    # Bar chart: primary VALUE metric by segment. (The old "Entities per Segment"
+    # count bar was dropped — it duplicated the pie above.) Title reflects the
+    # metric's semantics: a total for ABC, an average for RFM/K-Means.
     if segments and segments[0].get("avg_metrics"):
         metrics = segments[0]["avg_metrics"]
-        primary_key = None
-        if method == "rfm":
-            primary_key = "monetary"
-        elif method == "abc":
-            primary_key = "value_share"
+        if method == "abc":
+            primary_key, title = "total_value", "Total Value by Segment"
+        elif method == "rfm":
+            primary_key, title = "monetary", "Average Monetary by Segment"
         else:
             primary_key = next(iter(metrics), None)
+            title = (
+                f"Average {primary_key.replace('_', ' ').title()} by Segment"
+                if primary_key else None
+            )
 
         if primary_key:
             metric_data = [
@@ -461,7 +528,7 @@ def _build_chart_data(segments: list[dict], method: str) -> list[dict]:
             ]
             charts.append({
                 "chart_type": "bar",
-                "title": f"Average {primary_key.replace('_', ' ').title()} by Segment",
+                "title": title,
                 "data": metric_data,
             })
 
@@ -472,11 +539,101 @@ def _build_chart_data(segments: list[dict], method: str) -> list[dict]:
 # AI INSIGHTS GENERATION
 # ══════════════════════════════════════════════════════════════
 
+# What each method's segment labels actually mean — so Gemini reads magnitude
+# tiers as magnitude, not as performance/quality judgments.
+_METHOD_SEMANTICS = {
+    "abc": (
+        "A/B/C are High/Medium/Low tiers by cumulative share of an additive value "
+        "metric — they rank contribution to the total, NOT efficiency, quality, or "
+        "performance. A high-share entity is simply large on that metric."
+    ),
+    "rfm": (
+        "Tiers come from Recency/Frequency/Monetary quantile scores of the "
+        "customer's own transactions — they describe buying behavior, not "
+        "profitability or intent."
+    ),
+    "kmeans": (
+        "Clusters are unsupervised proximity groups on the numeric columns; their "
+        "names are descriptive, not evaluative judgments."
+    ),
+}
+
+
+def _primary_metric_key(method: str, avg_metrics: dict) -> str | None:
+    """The single per-segment metric used for separation checks."""
+    if method == "abc":
+        return "value_share" if "value_share" in avg_metrics else None
+    if method == "rfm":
+        return "monetary" if "monetary" in avg_metrics else None
+    return next(iter(avg_metrics), None)  # kmeans: first numeric
+
+
+def _build_evidence_context(
+    segments: list[dict],
+    method: str,
+    detection: dict,
+    method_meta: dict | None,
+) -> dict:
+    """Dataset-agnostic reliability signals so Gemini can scale its confidence.
+
+    Computed only from data already in hand — no recompute of the segmentation.
+    """
+    method_meta = method_meta or {}
+    entity_count = sum(int(s.get("size", 0)) for s in segments)
+
+    if method == "abc":
+        metrics_used = [detection.get("value_column")]
+    elif method == "rfm":
+        metrics_used = [
+            detection.get("monetary_column"),
+            detection.get("date_column"),
+        ]
+    else:
+        metrics_used = list(detection.get("numeric_columns", []))
+    metrics_used = [m for m in metrics_used if m]
+
+    single_entity_segments = [
+        str(s["name"]) for s in segments if int(s.get("size", 0)) == 1
+    ]
+
+    # Marginal separation: any two segments whose primary metric are within
+    # SEG_MARGIN_PCT relative %. For K-Means also treat a low silhouette as weak.
+    marginal_separation = False
+    key = _primary_metric_key(method, segments[0].get("avg_metrics", {})) if segments else None
+    if key:
+        vals = [
+            s["avg_metrics"].get(key)
+            for s in segments
+            if isinstance(s.get("avg_metrics"), dict) and s["avg_metrics"].get(key) is not None
+        ]
+        for i in range(len(vals)):
+            for j in range(i + 1, len(vals)):
+                a, b = float(vals[i]), float(vals[j])
+                denom = max(abs(a), abs(b)) or 1.0
+                if abs(a - b) / denom * 100 <= SEG_MARGIN_PCT:
+                    marginal_separation = True
+    sil = method_meta.get("silhouette_score")
+    if method == "kmeans" and sil is not None and float(sil) < 0.25:
+        marginal_separation = True
+
+    return {
+        "entity_count": entity_count,
+        "segment_count": len(segments),
+        "metrics_used": metrics_used,
+        "small_sample": entity_count < SEG_SMALL_N,
+        "single_entity_segments": single_entity_segments,
+        "marginal_separation": marginal_separation,
+        "silhouette_score": _safe_json_value(sil) if sil is not None else None,
+        "metric_semantics": _METHOD_SEMANTICS.get(method, ""),
+    }
+
+
 def _generate_segment_insights(
     segments: list[dict],
     category: str,
     method: str,
     detection: dict,
+    method_meta: dict | None = None,
 ) -> dict:
     """Ask Gemini to name clusters (for K-Means) and generate business insights."""
     global _client
@@ -498,11 +655,32 @@ def _generate_segment_insights(
 
     needs_naming = method == "kmeans"
 
+    evidence = _build_evidence_context(segments, method, detection, method_meta)
+    metrics_used = evidence["metrics_used"]
+    metrics_str = ", ".join(metrics_used) if metrics_used else "(none identified)"
+
     prompt = (
         f"You are a senior {category} analyst. A {method_label} segmentation was performed "
         f"on a {category} dataset.\n\n"
         f"Entity column: {detection.get('entity_column', 'N/A')}\n"
         f"Segmentation method: {method_label}\n\n"
+        # (a) Data scope + no-invention guardrail
+        f"DATA SCOPE — this segmentation used ONLY these field(s): {metrics_str}. "
+        "Base every statement strictly on these fields and the segment stats below. "
+        "Do NOT infer efficiency, cost, resource usage, quality, growth, profitability, "
+        "or root causes — the data does not measure them. If a claim is not supported by "
+        "the provided numbers, do not make it.\n\n"
+        # (b) What the labels mean
+        f"WHAT THE LABELS MEAN — {evidence['metric_semantics']}\n\n"
+        # (c) Evidence strength
+        f"DATA RELIABILITY (scale your confidence to this):\n"
+        f"{json.dumps({k: evidence[k] for k in ('entity_count', 'segment_count', 'small_sample', 'single_entity_segments', 'marginal_separation', 'silhouette_score')}, default=str)}\n"
+        "If small_sample or marginal_separation is true, or a segment has a single entity, "
+        "state that limitation plainly and frame recommendations as hypotheses to investigate "
+        "('investigate whether…'), not directives. Do NOT recommend high-stakes actions "
+        "(divestment, layoffs, major restructuring) unless the numbers strongly justify them. "
+        "When reliability is low, include ONE insight covering the segmentation's limitations "
+        "and what additional data would sharpen it.\n\n"
         f"Segments found:\n{json.dumps(segments_for_prompt, indent=2, default=str)}\n\n"
     )
 
@@ -526,8 +704,10 @@ def _generate_segment_insights(
         )
 
     prompt += (
-        "\nEach insight should be actionable and specific to the data. "
-        "Reference segment names and metrics. Include recommendations.\n"
+        "\nEach insight should reference specific segment names and the actual metric "
+        "value(s) above, and be honest about what the data can and cannot show. "
+        "Give recommendations only where the evidence supports them; scale their stakes "
+        "to the DATA RELIABILITY signals.\n"
         "Return ONLY valid JSON. No markdown fences."
     )
 

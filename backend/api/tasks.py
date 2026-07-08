@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import time
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -28,6 +29,7 @@ from .supabase_client import (
     get_dataset,
     download_file_bytes,
     CLEANED_DATA_BUCKET,
+    RAW_DATA_BUCKET,
     upload_cleaned_file_to_bucket,
     insert_columns_metadata,
     delete_columns_metadata,
@@ -155,6 +157,232 @@ def process_dataset_pipeline(self, dataset_id: str):
 
         # Retry once on transient errors (network issues, etc.)
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=1, default_retry_delay=30)
+def append_dataset_pipeline(self, dataset_id: str):
+    """
+    Incremental append pipeline (Approach B).
+
+    Only the NEWLY-appended file is cleaned (Step 3) and smart-transformed (Step 6);
+    the already-processed old rows are reused and concatenated. Dataset-wide steps
+    (Step 4 profiling, Step 7 blueprint, Step 8 report, row persistence) still run on
+    the merged set. Step 5 is skipped when the schema is unchanged — the stored
+    ai_profile is re-attached to the freshly-profiled columns.
+
+    Queued by append_to_dataset_view only when the appended file matches the existing
+    schema; otherwise the view falls back to the full process_dataset_pipeline.
+    """
+    logger.info(f"Incremental append pipeline started for dataset {dataset_id}")
+    timings: dict[str, float] = {}
+
+    def _timed(label, fn):
+        t0 = time.perf_counter()
+        result = fn()
+        dt = round(time.perf_counter() - t0, 2)
+        timings[label] = dt
+        logger.info("[timing] dataset=%s %s took %.2fs", dataset_id, label, dt)
+        return result
+
+    pipeline_t0 = time.perf_counter()
+    try:
+        update_dataset(dataset_id, {'status': 'processing'})
+        dataset = get_dataset(dataset_id)
+        if not dataset:
+            raise ValueError(f"Dataset {dataset_id} not found")
+
+        context = _parse_json_object(dataset.get('global_context'))
+        append_info = context.get('append') or {}
+        prev_processed = append_info.get('prev_processed_path')
+        prev_smart = append_info.get('prev_smart_path')
+        new_raw_path = append_info.get('new_raw_path')
+        if not (prev_processed and prev_smart and new_raw_path):
+            raise ValueError(
+                "Incremental append requires prev_processed/prev_smart/new_raw paths in "
+                "global_context.append"
+            )
+        user_id = dataset['user_id']
+
+        # Snapshot existing ai_profile BEFORE Step 4 wipes columns_metadata, so Step 5
+        # can be skipped when the schema is unchanged.
+        prev_columns = get_columns_metadata(dataset_id) or []
+        ai_snapshot = {
+            c['clean_name']: {
+                'ai_profile': c.get('ai_profile'),
+                'is_primary_metric': c.get('is_primary_metric'),
+            }
+            for c in prev_columns if c.get('clean_name')
+        }
+
+        # STEP 3′: clean ONLY the new file, concat onto the existing cleaned rows.
+        _update_progress(dataset_id, step=3, message='Append: cleaning new rows...')
+        new_processed_path, cleaned_new = _timed(
+            'append_step3_clean',
+            lambda: _append_clean_and_merge(user_id, prev_processed, new_raw_path),
+        )
+        update_dataset(dataset_id, {'processed_path': new_processed_path})
+
+        # STEP 4: full profiling on the merged cleaned frame (exact stats).
+        _update_progress(dataset_id, step=4, message='Append: profiling merged dataset...')
+        _timed('append_step4_profile', lambda: _run_step4_pipeline(dataset_id))
+
+        # STEP 5: reuse stored ai_profile (schema unchanged) or fall back to Gemini.
+        _update_progress(dataset_id, step=5, message='Append: applying semantics...')
+        _timed('append_step5_reuse', lambda: _reuse_or_run_step5(dataset_id, ai_snapshot))
+
+        # STEP 6′: smart-transform ONLY the new rows, concat onto existing smart rows.
+        _update_progress(dataset_id, step=6, message='Append: smart preprocessing new rows...')
+        _timed('append_step6_smart', lambda: _append_smart_and_merge(dataset_id, prev_smart, cleaned_new))
+
+        # STEPS 7 + 8 + persist: unchanged, operate on merged artifacts/metadata.
+        _update_progress(dataset_id, step=7, message='Append: dashboard blueprint...')
+        _timed('append_step7_blueprint', lambda: _run_step7(dataset_id))
+        _update_progress(dataset_id, step=8, message='Append: AI report...')
+        _timed('append_step8_report', lambda: _run_step8(dataset_id))
+        _update_progress(dataset_id, step=8, message='Append: persisting rows...')
+        _timed('append_persist_rows', lambda: _persist_dataset_rows(dataset_id))
+
+        # Clear the transient append block.
+        final = get_dataset(dataset_id)
+        final_ctx = _parse_json_object(final.get('global_context'))
+        final_ctx.pop('append', None)
+        update_dataset(dataset_id, {'global_context': final_ctx})
+
+        logger.info(
+            "[timing] dataset=%s APPEND_TOTAL=%.2fs breakdown=%s",
+            dataset_id, round(time.perf_counter() - pipeline_t0, 2), timings,
+        )
+        _update_progress(
+            dataset_id, step=8, message='Append completed successfully.', status='completed',
+        )
+        update_dataset(dataset_id, {'status': 'completed'})
+        logger.info(f"Incremental append pipeline completed for dataset {dataset_id}")
+
+    except Exception as exc:
+        logger.exception(f"Append pipeline failed for dataset {dataset_id}: {exc}")
+        _fail_pipeline(dataset_id, str(exc))
+        raise self.retry(exc=exc)
+
+
+def _append_clean_and_merge(user_id: str, prev_processed_path: str, new_raw_path: str):
+    """
+    Clean the new file (Step 3 logic) and concat onto the existing cleaned parquet.
+    Uploads the merged cleaned parquet. Returns (new_processed_path, cleaned_new_df).
+    """
+    from preprocessing.pipeline import clean_bytes_to_frame
+
+    new_bytes = download_file_bytes(RAW_DATA_BUCKET, new_raw_path)
+    cleaned_new = clean_bytes_to_frame(new_bytes, new_raw_path)
+
+    prev_bytes = download_file_bytes(CLEANED_DATA_BUCKET, prev_processed_path)
+    prev_cleaned = pd.read_parquet(io.BytesIO(prev_bytes))
+
+    if set(cleaned_new.columns) != set(prev_cleaned.columns):
+        raise ValueError(
+            f"Append schema mismatch: new={sorted(map(str, cleaned_new.columns))} "
+            f"existing={sorted(map(str, prev_cleaned.columns))}"
+        )
+    cleaned_new = cleaned_new[list(prev_cleaned.columns)]  # align column order
+
+    merged = pd.concat([prev_cleaned, cleaned_new], ignore_index=True)
+    for _col in merged.select_dtypes(include=["int", "int64"]).columns:
+        merged[_col] = pd.to_numeric(merged[_col], downcast="integer")
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    new_path = f"{user_id}/{timestamp}_{uuid.uuid4().hex[:8]}_appended_cleaned.parquet"
+    buf = io.BytesIO()
+    merged.to_parquet(buf, index=False)
+    upload_cleaned_file_to_bucket(
+        file_data=buf.getvalue(), storage_path=new_path,
+        content_type='application/octet-stream',
+    )
+    logger.info(
+        "Append step3: cleaned new=%d + existing=%d -> merged=%d rows at %s",
+        len(cleaned_new), len(prev_cleaned), len(merged), new_path,
+    )
+    return new_path, cleaned_new
+
+
+def _reuse_or_run_step5(dataset_id: str, ai_snapshot: dict):
+    """
+    Re-attach the snapshotted ai_profile onto the freshly-profiled columns when the
+    schema is unchanged (no Gemini call). Otherwise run the normal Step 5.
+    """
+    columns = get_columns_metadata(dataset_id) or []
+    current = {c['clean_name'] for c in columns if c.get('clean_name')}
+    snapshot_names = set(ai_snapshot.keys())
+    schema_unchanged = bool(current) and current == snapshot_names
+    # Step 5 legitimately enriches only a subset of columns (Gemini returns what it
+    # can). Reuse the stored profiles as-is whenever at least one column was profiled;
+    # only re-run Gemini if the schema changed or nothing was ever profiled.
+    any_profiled = any(
+        (ai_snapshot.get(name) or {}).get('ai_profile') for name in current
+    )
+
+    if schema_unchanged and any_profiled:
+        for c in columns:
+            snap = ai_snapshot.get(c['clean_name'])
+            if snap:
+                update_column_metadata(c['id'], {
+                    'ai_profile': snap['ai_profile'],
+                    'is_primary_metric': snap['is_primary_metric'],
+                })
+        logger.info(
+            "Append step5: reused stored ai_profile for %d columns (no Gemini)", len(columns),
+        )
+        return
+
+    logger.info("Append step5: schema changed or missing ai_profile -> running Gemini")
+    _run_step5(dataset_id)
+
+
+def _append_smart_and_merge(dataset_id: str, prev_smart_path: str, cleaned_new: pd.DataFrame):
+    """
+    Smart-transform ONLY the new cleaned rows (Step 6) and concat onto the existing
+    smart parquet. Uploads the merged smart parquet and updates global_context.step6.
+    """
+    dataset = get_dataset(dataset_id)
+    processed_path = dataset.get('processed_path')  # the merged cleaned path
+    columns_metadata = get_columns_metadata(dataset_id)
+    if not columns_metadata:
+        raise ValueError(f"No columns_metadata found for dataset {dataset_id}")
+
+    df_smart_new, report = run_step6_smart(cleaned_new, columns_metadata)
+
+    prev_bytes = download_file_bytes(CLEANED_DATA_BUCKET, prev_smart_path)
+    prev_smart = pd.read_parquet(io.BytesIO(prev_bytes))
+    if set(df_smart_new.columns) != set(prev_smart.columns):
+        raise ValueError(
+            f"Append smart schema mismatch: new={sorted(map(str, df_smart_new.columns))} "
+            f"existing={sorted(map(str, prev_smart.columns))}"
+        )
+    df_smart_new = df_smart_new[list(prev_smart.columns)]
+
+    merged_smart = pd.concat([prev_smart, df_smart_new], ignore_index=True)
+
+    smart_path = _build_smart_path(processed_path)
+    buf = io.BytesIO()
+    merged_smart.to_parquet(buf, index=False)
+    upload_cleaned_file_to_bucket(
+        file_data=buf.getvalue(), storage_path=smart_path,
+        content_type='application/octet-stream',
+    )
+
+    context = _parse_json_object(dataset.get('global_context'))
+    context['step6'] = {
+        'status': 'completed',
+        'input_path': processed_path,
+        'output_path': smart_path,
+        'rows_before': int(len(prev_smart)),
+        'rows_after': int(len(merged_smart)),
+        'columns_count': int(len(merged_smart.columns)),
+        'report': report,
+    }
+    update_dataset(dataset_id, {'global_context': context})
+    logger.info(
+        "Append step6: smart new=%d + existing=%d -> merged=%d rows at %s",
+        len(df_smart_new), len(prev_smart), len(merged_smart), smart_path,
+    )
 
 
 # ══════════════════════════════════════════════════════════════

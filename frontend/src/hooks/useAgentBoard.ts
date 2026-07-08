@@ -46,6 +46,10 @@ interface UseAgentBoardReturn {
   addMetrics: (metrics: MetricsAsset) => void
   addNote: (text: string) => void
   addQuery: (text: string) => void
+  streamQuery: (text: string) => void
+  streamNote: (text: string) => void
+  endQuery: (finalText?: string) => void
+  endNote: (finalText?: string) => void
   removeWidget: (id: string) => void
   clearBoard: () => void
   reorder: (activeId: string, overId: string) => void
@@ -96,6 +100,9 @@ export function useAgentBoard(onCaption?: (text: string) => void): UseAgentBoard
   const abortRef = useRef<AbortController | null>(null)
   const captionRef = useRef<(text: string) => void>(onCaption ?? (() => {}))
   captionRef.current = onCaption ?? (() => {})
+  // Ids of the in-progress voice caption widgets (updated in place while streaming).
+  const liveQueryIdRef = useRef<string | null>(null)
+  const liveNoteIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     try {
@@ -140,6 +147,59 @@ export function useAgentBoard(onCaption?: (text: string) => void): UseAgentBoard
     if (!t) return
     addWidget({ id: makeId(), kind: 'query', span: 12, height: 'normal', text: t, createdAt: Date.now() })
   }, [addWidget, makeId])
+
+  // ── Live voice captions: create-or-update a widget in place while streaming ──
+  const streamQuery = useCallback((text: string) => {
+    if (!text) return
+    if (liveQueryIdRef.current) {
+      const id = liveQueryIdRef.current
+      setWidgets(prev => prev.map(w => (w.id === id && w.kind === 'query') ? { ...w, text } : w))
+    } else {
+      const id = makeId()
+      liveQueryIdRef.current = id
+      addWidget({ id, kind: 'query', span: 12, height: 'normal', text, createdAt: Date.now() })
+    }
+  }, [addWidget, makeId])
+
+  const streamNote = useCallback((text: string) => {
+    if (!text) return
+    if (liveNoteIdRef.current) {
+      const id = liveNoteIdRef.current
+      setWidgets(prev => prev.map(w => (w.id === id && w.kind === 'note') ? { ...w, text } : w))
+    } else {
+      const id = makeId()
+      liveNoteIdRef.current = id
+      addWidget({ id, kind: 'note', span: 4, height: 'normal', text, createdAt: Date.now() })
+    }
+  }, [addWidget, makeId])
+
+  // Finalize a live caption. With `finalText`: replace text (or drop the widget if
+  // empty). Without an argument: just detach the ref so the next turn starts fresh.
+  const endQuery = useCallback((finalText?: string) => {
+    const id = liveQueryIdRef.current
+    liveQueryIdRef.current = null
+    if (!id || finalText === undefined) return
+    const t = finalText.trim()
+    if (!t) {
+      setWidgets(prev => prev.filter(w => w.id !== id))
+      setOrder(prev => prev.filter(x => x !== id))
+    } else {
+      setWidgets(prev => prev.map(w => (w.id === id && w.kind === 'query') ? { ...w, text: t } : w))
+    }
+  }, [])
+
+  const endNote = useCallback((finalText?: string) => {
+    const id = liveNoteIdRef.current
+    liveNoteIdRef.current = null
+    if (!id || finalText === undefined) return
+    const t = finalText.trim()
+    if (!t) {
+      setWidgets(prev => prev.filter(w => w.id !== id))
+      setOrder(prev => prev.filter(x => x !== id))
+    } else {
+      setWidgets(prev => prev.map(w => (w.id === id && w.kind === 'note') ? { ...w, text: t } : w))
+    }
+  }, [])
 
   const stop = useCallback(() => {
     if (abortRef.current) {
@@ -225,6 +285,8 @@ export function useAgentBoard(onCaption?: (text: string) => void): UseAgentBoard
     }
     setWidgets([])
     setOrder([])
+    liveQueryIdRef.current = null
+    liveNoteIdRef.current = null
     conversationId.current = null
     try {
       localStorage.removeItem(boardKey())
@@ -254,5 +316,5 @@ export function useAgentBoard(onCaption?: (text: string) => void): UseAgentBoard
     setWidgets(prev => prev.map(w => (w.id === id ? { ...w, height } : w)))
   }, [])
 
-  return { widgets, order, loading, error, runPrompt, stop, addChart, add3D, addMetrics, addNote, addQuery, removeWidget, clearBoard, reorder, setSpan, setHeight }
+  return { widgets, order, loading, error, runPrompt, stop, addChart, add3D, addMetrics, addNote, addQuery, streamQuery, streamNote, endQuery, endNote, removeWidget, clearBoard, reorder, setSpan, setHeight }
 }

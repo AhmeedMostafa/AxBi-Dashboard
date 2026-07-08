@@ -110,6 +110,9 @@ def build_pdf_html(
     sections: list,
     columns_meta: list,
     segmentation: dict | None = None,
+    forecast_summary: dict | None = None,
+    forecast_b64: str | None = None,
+    correlation_b64: str | None = None,
 ) -> str:
     from .pdf_charts import render_chart_from_agg
 
@@ -412,6 +415,47 @@ def build_pdf_html(
             f'</tr></thead><tbody>{col_rows}</tbody></table></div>'
         )
 
+    # ── Forecast band (latest saved forecast: summary + projection chart) ──
+    forecast_html = ''
+    if forecast_b64:
+        fs = forecast_summary or {}
+        summary_bits = []
+        if fs.get('target'):
+            summary_bits.append(f'<strong style="color:{C_SLATE};">Target:</strong> {_escape(str(fs["target"]))}')
+        if fs.get('best_model'):
+            summary_bits.append(f'<strong style="color:{C_SLATE};">Model:</strong> {_escape(str(fs["best_model"]))}')
+        if fs.get('accuracy') is not None:
+            try:
+                summary_bits.append(f'<strong style="color:{C_SLATE};">Accuracy:</strong> {float(fs["accuracy"]):.1f}%')
+            except (TypeError, ValueError):
+                pass
+        if fs.get('horizon'):
+            summary_bits.append(f'<strong style="color:{C_SLATE};">Horizon:</strong> {_escape(str(fs["horizon"]))}')
+        summary_line = (
+            f'<p style="font-size:7.5pt;color:{C_BODY};margin:0 0 3pt 0;">'
+            f'{" &nbsp;·&nbsp; ".join(summary_bits)}</p>'
+            if summary_bits else ''
+        )
+        forecast_html = (
+            f'<div style="margin-bottom:5pt;">{_band(next_sec(), "FORECAST")}'
+            f'{summary_line}'
+            f'<div style="border:1pt solid {C_BORDER};padding:4pt 5pt;">'
+            f'<img src="data:image/png;base64,{forecast_b64}" style="width:100%;max-height:210pt;" alt="Forecast"/>'
+            f'</div></div>'
+        )
+
+    # ── Column relationships band (numeric correlation heatmap) ──
+    correlation_html = ''
+    if correlation_b64:
+        correlation_html = (
+            f'<div style="margin-bottom:5pt;">{_band(next_sec(), "COLUMN RELATIONSHIPS")}'
+            f'<p style="font-size:7.5pt;color:{C_MUTED};margin:0 0 3pt 0;">'
+            f'Correlation strength between numeric fields — red = positive, blue = negative.</p>'
+            f'<div style="border:1pt solid {C_BORDER};padding:4pt 5pt;">'
+            f'<img src="data:image/png;base64,{correlation_b64}" style="width:100%;max-height:300pt;" alt="Correlation heatmap"/>'
+            f'</div></div>'
+        )
+
     footer = (
         f'<p style="font-size:6.5pt;color:{C_MUTED};text-align:center;margin-top:6pt;'
         f'padding-top:4pt;border-top:1pt solid {C_BORDER};">'
@@ -430,7 +474,9 @@ def build_pdf_html(
 {chart_html}
 {narrative_html}
 {seg_html}
+{forecast_html}
 {col_table_html}
+{correlation_html}
 {footer}
 </body>
 </html>"""

@@ -8,6 +8,8 @@ import { exportPdf, getDatasetRows, getDatasetDashboard, runSegmentation, aggreg
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis'
 import AudioOverviewButton from '../common/AudioOverviewButton'
 import { LogoSpinner } from '../ui/LogoSpinner'
+import ForecastSection from './ForecastSection'
+import ColumnMindMap from '../AIModel/ColumnMindMap'
 import toast from 'react-hot-toast'
 
 const LAST_DATASET_ID_KEY = 'bi_dashboard_last_dataset_id'
@@ -148,16 +150,6 @@ function compactNumber(v: number): string {
 
 function prettify(name: string): string {
     return name.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
-
-function getRoleConfig(role: string): { label: string; color: string; icon: string } {
-    const r = role.toLowerCase()
-    if (r.includes('time') || r.includes('date')) return { label: 'Date / Time', color: 'bg-info/15 text-info', icon: 'fa-solid fa-calendar' }
-    if (r.includes('metric') || r.includes('measure') || r.includes('numeric') || r.includes('kpi')) return { label: 'Metric', color: 'bg-emerald-500/20 text-success', icon: 'fa-solid fa-chart-line' }
-    if (r.includes('entity') || r.includes('id') || r.includes('identifier') || r.includes('key')) return { label: 'Identifier', color: 'bg-purple-500/20 text-purple-300', icon: 'fa-solid fa-fingerprint' }
-    if (r.includes('categor') || r.includes('dimension') || r.includes('group')) return { label: 'Category', color: 'bg-warning/15 text-warning', icon: 'fa-solid fa-tag' }
-    if (r.includes('target') || r.includes('label')) return { label: 'Target', color: 'bg-red-500/20 text-destructive', icon: 'fa-solid fa-bullseye' }
-    return { label: 'Field', color: 'bg-gray-500/20 text-muted-foreground', icon: 'fa-solid fa-circle-dot' }
 }
 
 export default function ReportPage() {
@@ -647,9 +639,16 @@ export default function ReportPage() {
                     </div>
                 </div>
 
-                {/* ── Data Snapshot (replaces raw column profile) ── */}
-                {columns.length > 0 && (
-                    <DataSnapshot columns={columns} />
+                {/* ── Forecast ── */}
+                <ForecastSection datasetId={datasetId} />
+
+                {/* ── Column Relationships ── */}
+                {datasetId && (
+                    <div className="mt-10">
+                        <SectionHeader icon="fa-solid fa-diagram-project" title="Column Relationships" />
+                        <p className="text-sm text-muted-foreground mt-1 mb-4">How your fields relate — correlation strength between columns.</p>
+                        <ColumnMindMap datasetId={datasetId} />
+                    </div>
                 )}
 
                 {/* ── Footer ── */}
@@ -716,86 +715,6 @@ function KpiCard({ spec, rows }: { spec: ChartSpec; rows: DatasetRow[] }) {
     )
 }
 
-/* ── Data Snapshot — user-friendly column overview ── */
-function DataSnapshot({ columns }: { columns: ColumnMeta[] }) {
-    return (
-        <div>
-            <SectionHeader icon="fa-solid fa-table-list" title="Data Snapshot" />
-            <p className="text-sm text-muted-foreground mt-1 mb-4">
-                What's in your dataset — each field explained in plain language.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {columns.slice(0, 18).map((col, i) => {
-                    const stats = parseJson(col.technical_stats)
-                    const ai = parseJson(col.ai_profile)
-                    const role = String(ai.column_role || ai.role || '')
-                    const meaning = String(ai.semantic_meaning || ai.description || '')
-                    const nullRatio = stats.null_ratio != null ? Number(stats.null_ratio) : 0
-                    const completePct = Math.round((1 - nullRatio) * 100)
-                    const cfg = getRoleConfig(role)
-                    const colName = col.display_name || col.clean_name || col.original_name || 'Column'
-
-                    // Build a plain-language value summary
-                    let valueSummary = ''
-                    const mn = stats.min != null ? compactNumber(Number(stats.min)) : null
-                    const mx = stats.max != null ? compactNumber(Number(stats.max)) : null
-                    if (mn != null && mx != null) {
-                        valueSummary = `${mn} – ${mx}`
-                    } else {
-                        const samples = Array.isArray(stats.top_5_samples) ? stats.top_5_samples : []
-                        if (samples.length) valueSummary = samples.slice(0, 3).map(String).join(', ')
-                    }
-
-                    return (
-                        <div key={i} className="bg-card border border-border rounded-xl p-4 hover:border-primary/20 transition-colors">
-                            {/* Header */}
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <i className={`${cfg.icon} text-xs shrink-0`} style={{ color: 'inherit', opacity: 0.6 }}></i>
-                                    <p className="font-semibold text-foreground text-sm leading-tight truncate">{prettify(colName)}</p>
-                                </div>
-                                <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${cfg.color}`}>
-                                    {cfg.label}
-                                </span>
-                            </div>
-
-                            {/* Semantic meaning */}
-                            {meaning ? (
-                                <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-2">{meaning}</p>
-                            ) : (
-                                <p className="text-xs text-muted-foreground italic mb-3">No description available</p>
-                            )}
-
-                            {/* Completeness bar */}
-                            <div className="mb-2">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[10px] text-muted-foreground">Data completeness</span>
-                                    <span className={`text-[10px] font-semibold ${completePct >= 90 ? 'text-success' : completePct >= 70 ? 'text-warning' : 'text-destructive'}`}>
-                                        {completePct}%
-                                    </span>
-                                </div>
-                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all ${completePct >= 90 ? 'bg-emerald-500' : completePct >= 70 ? 'bg-amber-500' : 'bg-red-500'}`}
-                                        style={{ width: `${completePct}%` }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Value range / samples */}
-                            {valueSummary && (
-                                <p className="text-[10px] text-muted-foreground mt-2 truncate" title={valueSummary}>
-                                    <span className="text-muted-foreground">Values: </span>{valueSummary}
-                                </p>
-                            )}
-                        </div>
-                    )
-                })}
-            </div>
-        </div>
-    )
-}
-
 const SEG_COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1']
 
 function SegmentationSection({
@@ -844,6 +763,7 @@ function SegmentationSection({
 
     const pieData = segmentation.charts?.find(c => c.chart_type === 'pie')
     const barCharts = segmentation.charts?.filter(c => c.chart_type === 'bar') || []
+    const paretoData = segmentation.charts?.find(c => c.chart_type === 'pareto')
 
     return (
         <div>
@@ -910,7 +830,7 @@ function SegmentationSection({
                                     <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} />
                                     <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} />
                                     <Tooltip contentStyle={{ backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--popover-foreground)' }} labelStyle={{ color: 'var(--popover-foreground)' }} itemStyle={{ color: 'var(--popover-foreground)' }} />
-                                    <Bar dataKey="value" name="Count" radius={[6, 6, 0, 0]}>
+                                    <Bar dataKey="value" name="Value" radius={[6, 6, 0, 0]}>
                                         {(barCharts[0].data as Array<{ label: string; value: number }>).map((_, i) => (
                                             <Cell key={i} fill={SEG_COLORS[i % SEG_COLORS.length]} />
                                         ))}
@@ -922,24 +842,28 @@ function SegmentationSection({
                 )}
             </div>
 
-            {barCharts[1] && (
+            {paretoData && (
                 <div className="mt-6 bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="px-6 pt-5 pb-2">
-                        <h3 className="text-base font-bold text-foreground">{barCharts[1].title}</h3>
+                        <h3 className="text-base font-bold text-foreground">{paretoData.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Each entity's value share (bars) and the running cumulative share (line) — the 80/20 concentration.</p>
                     </div>
-                    <div className="h-[280px] px-3 pb-1">
+                    <div className="h-[340px] px-3 pb-1">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={barCharts[1].data as Array<{ label: string; value: number }>}>
+                            <ComposedChart data={paretoData.data as Array<{ entity: string; value_share: number; cumulative_pct: number }>} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                <XAxis dataKey="label" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={{ backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--popover-foreground)' }} labelStyle={{ color: 'var(--popover-foreground)' }} itemStyle={{ color: 'var(--popover-foreground)' }} />
-                                <Bar dataKey="value" name="Value" radius={[6, 6, 0, 0]}>
-                                    {(barCharts[1].data as Array<{ label: string; value: number }>).map((_, i) => (
-                                        <Cell key={i} fill={SEG_COLORS[i % SEG_COLORS.length]} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
+                                <XAxis dataKey="entity" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} interval={0} angle={-25} textAnchor="end" height={64} />
+                                <YAxis domain={[0, 100]} unit="%" tick={{ fill: '#9ca3af', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--popover-foreground)' }}
+                                    labelStyle={{ color: 'var(--popover-foreground)' }}
+                                    itemStyle={{ color: 'var(--popover-foreground)' }}
+                                    formatter={(val: unknown, name: unknown) => [`${Number(val).toFixed(1)}%`, name as string]}
+                                />
+                                <Legend />
+                                <Bar dataKey="value_share" name="Value Share" fill={SEG_COLORS[1]} radius={[4, 4, 0, 0]} maxBarSize={48} />
+                                <Line type="monotone" dataKey="cumulative_pct" name="Cumulative %" stroke={SEG_COLORS[4]} strokeWidth={2} dot={{ r: 3, fill: SEG_COLORS[4] }} />
+                            </ComposedChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
@@ -999,15 +923,22 @@ function SegmentationSection({
                                     <td className="px-5 py-3 text-foreground">{seg.percentage}%</td>
                                     <td className="px-5 py-3 text-muted-foreground">
                                         <div className="flex flex-wrap gap-2">
-                                            {Object.entries(seg.avg_metrics).slice(0, 3).map(([k, v]) => (
-                                                <span key={k} className="px-2 py-0.5 rounded-md bg-muted text-xs">
-                                                    {prettify(k)}: {v != null ? compactNumber(v) : '-'}
-                                                </span>
-                                            ))}
+                                            {Object.entries(seg.avg_metrics).slice(0, 3).map(([k, v]) => {
+                                                const isPct = k.includes('share') || k.includes('pct')
+                                                const shown = v == null ? '-' : isPct ? `${Number(v).toFixed(1)}%` : compactNumber(v)
+                                                return (
+                                                    <span key={k} className="px-2 py-0.5 rounded-md bg-muted text-xs">
+                                                        {prettify(k)}: {shown}
+                                                    </span>
+                                                )
+                                            })}
                                         </div>
                                     </td>
-                                    <td className="px-5 py-3 text-muted-foreground text-xs max-w-[200px] truncate" title={seg.top_entities.join(', ')}>
-                                        {seg.top_entities.slice(0, 3).join(', ') || '-'}
+                                    <td className="px-5 py-3 text-muted-foreground text-xs" title={seg.top_entities.join(', ')}>
+                                        <div className="max-w-[220px] overflow-x-auto whitespace-nowrap">
+                                            {seg.top_entities.slice(0, 5).join(', ') || '-'}
+                                            {seg.top_entities.length > 5 && ` +${seg.top_entities.length - 5} more`}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

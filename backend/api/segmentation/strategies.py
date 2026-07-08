@@ -227,10 +227,13 @@ def abc_analysis(
     abc.sort_values("total_value", ascending=False, inplace=True)
     abc["cumulative_pct"] = (abc["total_value"].cumsum() / abc["total_value"].sum() * 100).round(2)
 
+    # Neutral, polarity-safe tier labels: they describe share of the metric total,
+    # not performance — so they read correctly whether the metric is "good" (revenue)
+    # or "bad" (defect_rate, cost).
     abc["segment"] = np.where(
         abc["cumulative_pct"] <= 80,
-        "A - Top Performers",
-        np.where(abc["cumulative_pct"] <= 95, "B - Moderate", "C - Low Impact"),
+        "A - High Share",
+        np.where(abc["cumulative_pct"] <= 95, "B - Medium Share", "C - Low Share"),
     )
 
     return abc.reset_index(drop=True)

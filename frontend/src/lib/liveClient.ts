@@ -10,7 +10,7 @@
 //
 // The API key never reaches the browser — the proxy injects it server-side.
 
-export type LiveStatus = 'connecting' | 'listening' | 'speaking' | 'closed' | 'error'
+export type LiveStatus = 'connecting' | 'listening' | 'processing' | 'speaking' | 'closed' | 'error'
 
 export interface LiveAction {
   type: 'navigate' | 'toast' | 'refresh'
@@ -137,6 +137,10 @@ class PlaybackScheduler {
     this.flush()
     try { await this.ctx.close() } catch { /* noop */ }
   }
+
+  get playing() {
+    return this.active.size > 0
+  }
 }
 
 export class LiveClient {
@@ -149,6 +153,9 @@ export class LiveClient {
   private cb: LiveClientCallbacks
   private opts: LiveClientOptions
   private closed = false
+  /** When true, mic frames are not streamed (push-to-talk "send" pressed). */
+  private micMuted = false
+  private turnCompletePending = false
 
   constructor(opts: LiveClientOptions, cb: LiveClientCallbacks) {
     this.opts = opts
@@ -157,6 +164,8 @@ export class LiveClient {
 
   async start() {
     this.closed = false
+    this.micMuted = false
+    this.turnCompletePending = false
     this.cb.onStatus?.('connecting')
 
     // 1) Mic + capture graph (16kHz target). Must be created from a user
@@ -194,7 +203,12 @@ export class LiveClient {
     this.player = new PlaybackScheduler()
     this.player.onPlaying = (playing) => {
       if (this.closed) return
-      this.cb.onStatus?.(playing ? 'speaking' : 'listening')
+      if (playing) {
+        this.cb.onStatus?.('speaking')
+      } else {
+        this.cb.onStatus?.(this.micMuted ? 'processing' : 'listening')
+        this.maybeFinishTurn()
+      }
     }
 
     // 2) Open the proxy WebSocket.
@@ -238,7 +252,7 @@ export class LiveClient {
     // 3) Stream mic frames once the socket is up.
     const inRate = ctx.sampleRate
     this.workletNode.port.onmessage = (e: MessageEvent) => {
-      if (this.closed || !this.ws || this.ws.readyState !== WebSocket.OPEN) return
+      if (this.closed || this.micMuted || !this.ws || this.ws.readyState !== WebSocket.OPEN) return
       const frame = e.data as Float32Array
       const ds = downsample(frame, inRate)
       const pcm = floatTo16BitPCM(ds)
@@ -261,7 +275,7 @@ export class LiveClient {
       case 'interrupted':
         // Barge-in: stop whatever is playing immediately.
         this.player?.flush()
-        this.cb.onStatus?.('listening')
+        this.cb.onStatus?.(this.micMuted ? 'processing' : 'listening')
         break
       case 'user_transcript':
         this.cb.onUserTranscript?.(msg.text || '')
@@ -282,8 +296,10 @@ export class LiveClient {
         if (msg.data) this.cb.onMetrics?.(msg.data)
         break
       case 'turn_complete':
-        if (this.player) this.cb.onStatus?.('listening')
+        this.turnCompletePending = true
+        this.cb.onStatus?.(this.micMuted ? 'processing' : 'listening')
         this.cb.onTurnComplete?.()
+        this.maybeFinishTurn()
         break
       case 'error':
         this.cb.onError?.(msg.message || 'Live error')
@@ -312,6 +328,46 @@ export class LiveClient {
     }
   }
 
+  /**
+   * Mute the mic (call-style): stop streaming frames and signal end-of-turn so
+   * Gemini processes what was said. The session stays open and the AI keeps
+   * replying; we just stop sending audio.
+   */
+  muteMic() {
+    if (this.closed) return
+    this.micMuted = true
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'audio_end' }))
+    }
+    // If the AI is currently speaking, keep 'speaking'; otherwise show processing.
+    this.cb.onStatus?.(this.isPlaying() ? 'speaking' : 'processing')
+  }
+
+  /**
+   * Unmute the mic: resume streaming frames. We do NOT force-stop playback here —
+   * barge-in happens naturally once the user actually speaks (Gemini's VAD fires
+   * an "interrupted" event, which flushes playback).
+   */
+  unmuteMic() {
+    if (this.closed) return
+    this.micMuted = false
+    this.cb.onStatus?.('listening')
+  }
+
+  isMuted() {
+    return this.micMuted
+  }
+
+  isPlaying() {
+    return this.player?.playing ?? false
+  }
+
+  private maybeFinishTurn() {
+    if (!this.turnCompletePending || this.closed) return
+    if (this.isPlaying()) return
+    this.turnCompletePending = false
+  }
+
   private cleanup() {
     try { this.workletNode?.port && (this.workletNode.port.onmessage = null) } catch { /* noop */ }
     try { this.workletNode?.disconnect() } catch { /* noop */ }
@@ -333,6 +389,8 @@ export class LiveClient {
   close() {
     if (this.closed) return
     this.closed = true
+    this.micMuted = false
+    this.turnCompletePending = false
     this.cleanup()
     this.cb.onStatus?.('closed')
   }

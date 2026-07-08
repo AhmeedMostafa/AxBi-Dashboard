@@ -9,7 +9,7 @@ import { supabase } from '../../supabase-client'
 import { listDatasets, getDatasetDashboard } from '../../api'
 import AudioWaveform from '../Chat/AudioWaveform'
 import { LiveClient, type LiveStatus, type LiveAction } from '../../lib/liveClient'
-import { mergeLiveTranscript, mergeAssistantTranscript, captionDir, normalizeTranscriptText } from '../../lib/liveTranscript'
+import { mergeLiveTranscript, mergeAssistantTranscript, mergeFilteredUserTranscript, captionDir, normalizeTranscriptText } from '../../lib/liveTranscript'
 import AxBiLogo from '../ui/AxBiLogo'
 import { MetricCardView } from './KpiCards'
 import { LogoSpinner } from '../ui/LogoSpinner'
@@ -91,17 +91,25 @@ interface PromptBarProps {
   onSubmit: (text: string) => void
   onStop: () => void
   voiceState: VoiceState
-  onVoiceToggle: () => void
+  micOn: boolean
+  onMicToggle: () => void
+  onEndVoice: () => void
   voiceLang: string
   onLangToggle: () => void
   inputRef?: RefObject<HTMLTextAreaElement | null>
 }
 
-function PromptBar({ input, setInput, loading, hasBoard, onSubmit, onStop, voiceState, onVoiceToggle, voiceLang, onLangToggle, inputRef }: PromptBarProps) {
+function PromptBar({ input, setInput, loading, hasBoard, onSubmit, onStop, voiceState, micOn, onMicToggle, onEndVoice, voiceLang, onLangToggle, inputRef }: PromptBarProps) {
   const voiceActive = voiceState !== 'idle'
-  const voiceTitle = voiceActive
-    ? (voiceState === 'connecting' ? 'Connecting…' : 'Listening — tap to end')
-    : 'Talk to your data'
+  const connecting = voiceState === 'connecting'
+  const aiTalking = voiceState === 'speaking'
+  const micTitle = !voiceActive
+    ? 'Talk to your data'
+    : connecting
+      ? 'Connecting…'
+      : micOn
+        ? 'Mic on — tap to mute & send'
+        : (aiTalking ? 'Muted — tap to talk (interrupts AI)' : 'Muted — tap to talk')
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(input) }} className="w-full">
       <div className="flex items-end gap-2.5">
@@ -146,19 +154,34 @@ function PromptBar({ input, setInput, loading, hasBoard, onSubmit, onStop, voice
         </button>
         <button
           type="button"
-          onClick={onVoiceToggle}
-          title={voiceTitle}
-          aria-label={voiceTitle}
+          onClick={onMicToggle}
+          title={micTitle}
+          aria-label={micTitle}
           className={`shrink-0 rounded-full flex items-center justify-center shadow-md transition-all duration-300 overflow-hidden ${
             voiceActive
-              ? 'w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-emerald-400/30'
+              ? (micOn
+                ? 'w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-500/40 ring-4 ring-emerald-400/30'
+                : 'w-16 h-16 bg-muted text-muted-foreground ring-2 ring-border')
               : 'w-12 h-12 bg-gradient-to-br from-[#5A5AF6] to-[#8B5CF6] text-primary-foreground shadow-primary/30 hover:scale-105 active:scale-95'
           }`}
         >
-          {voiceActive
-            ? <AudioWaveform active size="small" className="text-white" />
-            : <i className="fa-solid fa-microphone text-lg" />}
+          {!voiceActive
+            ? <i className="fa-solid fa-microphone text-lg" />
+            : micOn
+              ? <AudioWaveform active size="small" className="text-white" />
+              : <i className="fa-solid fa-microphone-slash text-lg" />}
         </button>
+        {voiceActive && (
+          <button
+            type="button"
+            onClick={onEndVoice}
+            title="End voice session"
+            aria-label="End voice session"
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 text-white shadow-md transition-colors active:scale-95"
+          >
+            <i className="fa-solid fa-phone-slash text-sm" />
+          </button>
+        )}
       </div>
     </form>
   )
@@ -231,7 +254,7 @@ function WidgetView({ widget, datasetId, fields }: { widget: AgentWidget; datase
 export default function AgentPage() {
   const navigate = useNavigate()
 
-  const { widgets, order, loading, error, runPrompt, stop, addChart, add3D, addMetrics, addNote, addQuery, removeWidget, clearBoard, reorder, setSpan, setHeight } =
+  const { widgets, order, loading, error, runPrompt, stop, addChart, add3D, addMetrics, streamQuery, streamNote, endQuery, endNote, removeWidget, clearBoard, reorder, setSpan, setHeight } =
     useAgentBoard()
 
   const [input, setInput] = useState('')
@@ -239,6 +262,9 @@ export default function AgentPage() {
   const [firstName, setFirstName] = useState('')
   const [voiceLang, setVoiceLang] = useState(() => localStorage.getItem('bi-voice-language') || 'en')
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
+  // Mic on/off (mute) is tracked separately from the AI's talking status so the
+  // user can mute/unmute like a call without ending the session.
+  const [micOn, setMicOn] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [datasetId, setDatasetId] = useState(() => localStorage.getItem(DATASET_ID_KEY) || '')
   const [fields, setFields] = useState<Field[]>([])
@@ -322,17 +348,17 @@ export default function AgentPage() {
   }
 
   // ── Live voice session ────────────────────────────────────────────────────
+  // Finalize the streaming assistant note (replace with normalized text / drop if empty).
   const commitNote = useCallback(() => {
-    const t = normalizeTranscriptText(assistantBufRef.current)
+    endNote(normalizeTranscriptText(assistantBufRef.current))
     assistantBufRef.current = ''
-    if (t) addNote(t)
-  }, [addNote])
+  }, [endNote])
 
+  // Finalize the streaming user query bubble.
   const commitQuery = useCallback(() => {
-    const t = normalizeTranscriptText(userBufRef.current)
+    endQuery(normalizeTranscriptText(userBufRef.current))
     userBufRef.current = ''
-    if (t) addQuery(t)
-  }, [addQuery])
+  }, [endQuery])
 
   /** Pin the user's spoken question on the board before tool-generated widgets. */
   const flushUserQuery = useCallback(() => {
@@ -350,14 +376,31 @@ export default function AgentPage() {
     }
   }, [navigate, voiceLang])
 
-  const stopVoice = useCallback(() => {
+  const closeVoiceSession = useCallback(() => {
     try { liveRef.current?.close() } catch { /* noop */ }
     liveRef.current = null
     commitQuery()
     commitNote()
     lastSpeakerRef.current = null
+    setMicOn(false)
     setVoiceState('idle')
   }, [commitNote, commitQuery])
+
+  /** Mute the mic: finalize my spoken question and let the AI reply (session stays open). */
+  const muteMic = useCallback(() => {
+    if (!liveRef.current) return
+    commitQuery()
+    lastSpeakerRef.current = null
+    liveRef.current.muteMic()
+    setMicOn(false)
+  }, [commitQuery])
+
+  /** Unmute the mic: talk again / barge in as a new prompt without ending the session. */
+  const unmuteMic = useCallback(() => {
+    if (!liveRef.current) return
+    liveRef.current.unmuteMic()
+    setMicOn(true)
+  }, [])
 
   const startVoice = useCallback(async () => {
     try {
@@ -374,6 +417,7 @@ export default function AgentPage() {
       assistantBufRef.current = ''
       userBufRef.current = ''
       lastSpeakerRef.current = null
+      setMicOn(true)
       setVoiceState('connecting')
 
       const client = new LiveClient(
@@ -382,25 +426,33 @@ export default function AgentPage() {
           onStatus: (s: LiveStatus) => setVoiceState(s),
           onUserTranscript: (t: string) => {
             if (!t) return
+            // New user speech while the assistant note was open → finalize it first.
             if (lastSpeakerRef.current === 'assistant') commitNote()
-            userBufRef.current =
-              lastSpeakerRef.current === 'user'
-                ? mergeLiveTranscript(userBufRef.current, t)
-                : t
+            const merged = lastSpeakerRef.current === 'user'
+              ? mergeFilteredUserTranscript(userBufRef.current, t, voiceLang)
+              : (mergeFilteredUserTranscript('', t, voiceLang))
+            if (!merged) return
+            userBufRef.current = merged
             lastSpeakerRef.current = 'user'
+            // Stream my words into the chat as a "You asked …" bubble, updated live.
+            streamQuery(userBufRef.current)
           },
           onAssistantTranscript: (t: string) => {
             if (!t) return
+            // Assistant started replying → pin the finalized user question first.
             flushUserQuery()
             assistantBufRef.current =
               lastSpeakerRef.current === 'assistant'
                 ? mergeAssistantTranscript(assistantBufRef.current, t)
                 : t
             lastSpeakerRef.current = 'assistant'
+            // Stream the reply word-by-word into a note in the chat.
+            streamNote(assistantBufRef.current)
           },
           onTurnComplete: () => {
             flushUserQuery()
             commitNote()
+            lastSpeakerRef.current = null
           },
           onChart: (chart) => {
             flushUserQuery()
@@ -416,7 +468,14 @@ export default function AgentPage() {
           },
           onAction: handleLiveAction,
           onError: (m: string) => toast.error(m),
-          onClose: () => { commitQuery(); commitNote(); liveRef.current = null; lastSpeakerRef.current = null; setVoiceState('idle') },
+          onClose: () => {
+            commitQuery()
+            commitNote()
+            liveRef.current = null
+            lastSpeakerRef.current = null
+            setMicOn(false)
+            setVoiceState('idle')
+          },
         },
       )
       liveRef.current = client
@@ -429,12 +488,14 @@ export default function AgentPage() {
       liveRef.current = null
       setVoiceState('idle')
     }
-  }, [voiceLang, commitNote, commitQuery, flushUserQuery, addChart, add3D, addMetrics, handleLiveAction])
+  }, [voiceLang, commitNote, commitQuery, flushUserQuery, addChart, add3D, addMetrics, handleLiveAction, streamQuery, streamNote])
 
-  const toggleVoice = useCallback(() => {
+  // Mic button = mute/unmute toggle (call-style). Starts the session when idle.
+  const toggleMic = useCallback(() => {
     if (voiceState === 'idle') startVoice()
-    else stopVoice()
-  }, [voiceState, startVoice, stopVoice])
+    else if (micOn) muteMic()
+    else unmuteMic()
+  }, [voiceState, micOn, startVoice, muteMic, unmuteMic])
 
   const toggleLang = useCallback(() => {
     const next = voiceLang === 'ar-EG' ? 'en' : 'ar-EG'
@@ -446,9 +507,9 @@ export default function AgentPage() {
       lastSpeakerRef.current = null
       setVoiceState('connecting')
       liveRef.current.switchLanguage(next === 'ar-EG' ? 'ar-EG' : 'en-US')
-        .catch(() => { toast.error('Failed to switch language.'); stopVoice() })
+        .catch(() => { toast.error('Failed to switch language.'); closeVoiceSession() })
     }
-  }, [voiceLang, voiceState, commitNote, stopVoice])
+  }, [voiceLang, voiceState, commitNote, closeVoiceSession])
 
   useEffect(() => {
     return () => { try { liveRef.current?.close() } catch { /* noop */ } liveRef.current = null }
@@ -457,7 +518,8 @@ export default function AgentPage() {
   const greeting = firstName ? `Hi ${firstName}` : 'Welcome'
   const promptBarProps: PromptBarProps = {
     input, setInput, loading, hasBoard, onSubmit: submit, onStop: stop,
-    voiceState, onVoiceToggle: toggleVoice, voiceLang, onLangToggle: toggleLang,
+    voiceState, micOn, onMicToggle: toggleMic, onEndVoice: closeVoiceSession,
+    voiceLang, onLangToggle: toggleLang,
   }
 
   // ── Empty state: centered hero ───────────────────────────────────────────

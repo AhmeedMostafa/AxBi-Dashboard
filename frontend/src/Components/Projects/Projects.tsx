@@ -19,6 +19,7 @@ type DatasetCard = {
 
 const LAST_DATASET_ID_KEY = 'bi_dashboard_last_dataset_id'
 const MAX_PROJECTS = 4
+const TERMINAL_STATUS = new Set(['completed', 'failed'])
 
 const CATEGORY_COLORS: Record<string, string> = {
   sales:        'bg-sales/12 text-sales border-sales/30',
@@ -73,6 +74,8 @@ export default function Projects() {
   const [appendFiles, setAppendFiles]       = useState<File[]>([])
   const [isAppending, setIsAppending]       = useState(false)
   const appendInputRef = useRef<HTMLInputElement>(null)
+  // Previous per-dataset status, to detect processing → completed/failed transitions.
+  const prevStatusRef = useRef<Record<string, string>>({})
 
   useEffect(() => { fetchDatasets() }, [])
 
@@ -113,17 +116,39 @@ export default function Projects() {
     return () => { cancelled = true }
   }, [routeDatasetId, loading, datasets, navigate])
 
-  const fetchDatasets = async () => {
-    setLoading(true)
+  const fetchDatasets = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await listDatasets()
-      setDatasets(res.datasets || [])
+      const cards: DatasetCard[] = res.datasets || []
+      // Toast on any card that just transitioned into a terminal state.
+      for (const c of cards) {
+        const prev = prevStatusRef.current[c.id]
+        if (prev && !TERMINAL_STATUS.has(prev) && TERMINAL_STATUS.has(c.status)) {
+          const label = c.name || c.filename
+          if (c.status === 'completed') toast.success(`"${label}" finished processing.`)
+          else toast.error(`"${label}" failed to process.`)
+        }
+      }
+      prevStatusRef.current = Object.fromEntries(cards.map(c => [c.id, c.status]))
+      setDatasets(cards)
     } catch {
-      toast.error('Could not load projects.')
+      if (!silent) toast.error('Could not load projects.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
+
+  // Auto-poll while any card is still processing so status flips to
+  // completed/failed on its own — no manual refresh needed (covers append
+  // and page-refresh-mid-processing). listDatasets returns ≤4 lightweight
+  // metadata cards, so a silent 4s poll is cheap.
+  useEffect(() => {
+    const hasPending = datasets.some(d => !TERMINAL_STATUS.has(d.status))
+    if (!hasPending) return
+    const id = setInterval(() => { void fetchDatasets(true) }, 4000)
+    return () => clearInterval(id)
+  }, [datasets])
 
   const handleCardClick = (ds: DatasetCard) => {
     if (ds.status !== 'completed') { toast.error('This dataset is still processing.'); return }

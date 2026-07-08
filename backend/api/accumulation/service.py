@@ -13,6 +13,7 @@ import re
 import pandas as pd
 
 _ID_NAME_HINTS = ("id", "code", "uuid", "key", "number", "no")
+_CSV_ENCODING_FALLBACKS = ("utf-8", "utf-8-sig", "cp1252", "latin-1")
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -69,15 +70,113 @@ def combine(frames: list[pd.DataFrame], key: list[str] | None) -> pd.DataFrame:
     return combined.drop_duplicates(keep="first").reset_index(drop=True)
 
 
+def _looks_like_html(raw: bytes) -> bool:
+    head = raw[:512].lstrip().lower()
+    return head.startswith(b"<!doctype") or head.startswith(b"<html") or head.startswith(b"<head")
+
+
+def _is_zip_ooxml(raw: bytes) -> bool:
+    """XLSX (and other Office Open XML) files are ZIP archives."""
+    return len(raw) >= 2 and raw[:2] == b"PK"
+
+
+def _is_legacy_xls(raw: bytes) -> bool:
+    return len(raw) >= 8 and raw[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+
+def _read_excel_bytes(raw: bytes) -> pd.DataFrame:
+    return pd.read_excel(io.BytesIO(raw))
+
+
+def _read_csv_bytes(raw: bytes) -> pd.DataFrame:
+    """Read CSV bytes with encoding + delimiter fallbacks (common for web downloads)."""
+    if not raw or not raw.strip():
+        raise ValueError("File is empty.")
+    if _looks_like_html(raw):
+        raise ValueError(
+            "File looks like a web page, not a CSV. Download the dataset file directly "
+            "(Save link as…) instead of saving an HTML login or error page."
+        )
+
+    last_err: Exception | None = None
+    for encoding in _CSV_ENCODING_FALLBACKS:
+        try:
+            df = pd.read_csv(io.BytesIO(raw), encoding=encoding)
+            if df.shape[1] >= 2:
+                return df
+            # One column often means the wrong delimiter (e.g. European ;-separated CSV).
+            first_col = str(df.columns[0]) if len(df.columns) else ""
+            for sep in (";", "\t", "|"):
+                if sep in first_col or sep in raw[:4096].decode(encoding, errors="ignore"):
+                    try:
+                        df_alt = pd.read_csv(io.BytesIO(raw), encoding=encoding, sep=sep)
+                        if df_alt.shape[1] >= 2:
+                            return df_alt
+                    except Exception as exc:  # noqa: BLE001
+                        last_err = exc
+            return df
+        except UnicodeDecodeError as exc:
+            last_err = exc
+            continue
+        except pd.errors.EmptyDataError:
+            raise ValueError("CSV file has no data rows.") from None
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            continue
+
+    try:
+        return pd.read_csv(
+            io.BytesIO(raw),
+            encoding="utf-8",
+            encoding_errors="replace",
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(str(last_err or exc)) from exc
+
+
+def _accumulation_failure(accepted: list[str], rejected: list[dict]) -> ValueError:
+    """Build a user-facing error from rejected files (avoid generic schema-only text)."""
+    if len(rejected) == 1 and not accepted:
+        reason = rejected[0]["reason"]
+        if reason.startswith("unreadable: "):
+            reason = reason[len("unreadable: "):]
+        name = rejected[0]["filename"]
+        return ValueError(f"Could not read {name}: {reason}")
+    if rejected:
+        detail = "; ".join(f"{r['filename']}: {r['reason']}" for r in rejected)
+        if accepted:
+            return ValueError(f"No additional files matched the expected schema. {detail}")
+        return ValueError(f"No usable files. {detail}")
+    return ValueError("No files matched the expected schema.")
+
+
 def read_upload(file_bytes: bytes, filename: str) -> pd.DataFrame:
     """Read an uploaded CSV/XLSX into a column-normalized DataFrame."""
     ext = os.path.splitext(filename.lower())[1]
-    if ext == ".csv":
-        df = pd.read_csv(io.BytesIO(file_bytes))
+
+    # Content beats extension — downloads are often Excel saved as ".csv".
+    if _is_zip_ooxml(file_bytes) or _is_legacy_xls(file_bytes):
+        try:
+            df = _read_excel_bytes(file_bytes)
+        except Exception as exc:  # noqa: BLE001
+            hint = "Rename the file to .xlsx and upload again." if ext == ".csv" else ""
+            msg = f"File looks like Excel but could not be opened: {exc}"
+            if hint:
+                msg = f"{msg} {hint}"
+            raise ValueError(msg) from exc
+    elif ext == ".csv":
+        if _looks_like_html(file_bytes):
+            raise ValueError(
+                "File looks like a web page, not a CSV. Download the dataset file directly "
+                "(Save link as…) instead of saving an HTML login or error page."
+            )
+        df = _read_csv_bytes(file_bytes)
     elif ext in (".xlsx", ".xls"):
-        df = pd.read_excel(io.BytesIO(file_bytes))
+        df = _read_excel_bytes(file_bytes)
     else:
         raise ValueError(f"Unsupported file type: {ext or 'unknown'}")
+    if df.empty and len(df.columns) == 0:
+        raise ValueError("File has no columns.")
     return normalize_columns(df)
 
 
@@ -123,9 +222,9 @@ def accumulate_files(
         accepted.append(filename)
 
     if not accepted:
-        raise ValueError("No files matched the expected schema.")
+        raise _accumulation_failure(accepted, rejected)
     if not allow_single and base_df is None and len(accepted) == 1 and rejected:
-        raise ValueError("No files matched the expected schema.")
+        raise _accumulation_failure(accepted, rejected)
 
     key = detect_key(frames[0])
     combined = combine(frames, key=key)

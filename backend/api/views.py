@@ -44,7 +44,7 @@ from .supabase_client import (
 )
 from .processing.step4_column_detection import run_step4
 from .processing.step8_ai_report import detect_category_only
-from .tasks import process_dataset_pipeline
+from .tasks import process_dataset_pipeline, append_dataset_pipeline
 from .forecasting import run_forecast_service
 from .segmentation import run_segmentation_service
 from .recommendations import run_recommendations_service
@@ -437,13 +437,88 @@ def append_to_dataset_view(request, dataset_id):
             )
         raw_files.append((f.name, f.read()))
 
-    # Build base_df from the existing cleaned artifact (Parquet preferred, CSV fallback)
-    base_df = None
-    processed_path = dataset.get('processed_path')
-    if processed_path:
+    from api.accumulation.service import accumulate_files, schemas_match
+
+    # Read the NEW files into one normalized frame (no base merge yet) so we can decide
+    # between the incremental and full paths.
+    try:
+        acc = accumulate_files(raw_files, base_df=None, allow_single=True)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    new_df = acc['dataframe']
+
+    # ── Incremental append (Approach B) ─────────────────────────────────────────────
+    # If the appended file matches the existing schema and we have both prior artifacts
+    # (cleaned + smart parquet), only the NEW rows get cleaned/smart-transformed; the
+    # old rows are reused. Falls back to the full pipeline otherwise.
+    context = _parse_json_if_string(dataset.get('global_context'))
+    context = context if isinstance(context, dict) else {}
+    prev_processed = dataset.get('processed_path')
+    step6_ctx = context.get('step6') if isinstance(context.get('step6'), dict) else {}
+    prev_smart = step6_ctx.get('output_path')
+    existing_cols = get_columns_metadata(dataset_id) or []
+    existing_clean = [c['clean_name'] for c in existing_cols if c.get('clean_name')]
+    schema_ok = bool(existing_clean) and schemas_match(existing_clean, list(new_df.columns))[0]
+
+    if prev_processed and prev_smart and schema_ok:
         try:
-            existing_bytes = download_file_bytes(CLEANED_DATA_BUCKET, processed_path)
-            ext = os.path.splitext(str(processed_path).lower())[1]
+            buf = io.BytesIO()
+            new_df.to_parquet(buf, index=False)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            new_raw_name = f"{user_id}/{timestamp}_{uuid.uuid4().hex[:8]}_append_new.parquet"
+            new_raw_path = upload_file_to_bucket(buf.getvalue(), new_raw_name, 'application/octet-stream')
+        except Exception as e:
+            return Response(
+                {'error': 'File upload to storage failed', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        context['append'] = {
+            'prev_processed_path': prev_processed,
+            'prev_smart_path': prev_smart,
+            'new_raw_path': new_raw_path,
+        }
+        try:
+            # Keep processed_path — the incremental task needs the prior cleaned artifact.
+            update_dataset(dataset_id, {'global_context': context, 'status': 'pending'})
+        except Exception as e:
+            return Response(
+                {'error': 'Failed to update dataset record', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        try:
+            tracking_job = insert_tracking_job(dataset_id=dataset_id, user_id=user_id)
+        except Exception as e:
+            return Response(
+                {'error': 'Failed to create tracking job', 'message': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        try:
+            append_dataset_pipeline.delay(dataset_id)
+        except Exception:
+            pass
+
+        return Response(
+            {
+                'dataset_id': dataset_id,
+                'job_id': tracking_job['id'],
+                'status': 'pending',
+                **_build_progress(tracking_job.get('current_step', 1)),
+                'accepted_files': acc['accepted'],
+                'rejected_files': acc['rejected'],
+                'rows_added': len(new_df),
+                'mode': 'incremental',
+                'message': f'Appended {len(acc["accepted"])} file(s) incrementally. Re-processing started.',
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    # ── Fallback: full reprocess (schema changed / missing prior artifacts) ──────────
+    base_df = None
+    if prev_processed:
+        try:
+            existing_bytes = download_file_bytes(CLEANED_DATA_BUCKET, prev_processed)
+            ext = os.path.splitext(str(prev_processed).lower())[1]
             if ext == '.parquet':
                 base_df = pd.read_parquet(io.BytesIO(existing_bytes))
             else:
@@ -451,10 +526,9 @@ def append_to_dataset_view(request, dataset_id):
             from api.accumulation.service import normalize_columns
             base_df = normalize_columns(base_df)
         except Exception as e:
-            logger.warning('append_to_dataset_view: could not load existing data (%s); starting fresh. %s', processed_path, e)
+            logger.warning('append_to_dataset_view: could not load existing data (%s); starting fresh. %s', prev_processed, e)
             base_df = None
 
-    from api.accumulation.service import accumulate_files
     try:
         acc = accumulate_files(raw_files, base_df=base_df, allow_single=True)
     except ValueError as e:
@@ -462,12 +536,21 @@ def append_to_dataset_view(request, dataset_id):
 
     combined_df = acc['dataframe']
 
-    # Upload combined data as a new raw CSV
+    # Upload combined data as a new raw Parquet. CSV of the merged frame (600k+
+    # rows) blows past Supabase Storage's per-object size limit -> HTTP 413. Parquet
+    # is ~4x smaller and step 3 reads it back by extension.
     try:
-        csv_bytes = combined_df.to_csv(index=False).encode('utf-8')
+        buf = io.BytesIO()
+        # base_df is type-cleaned (read from parquet); freshly-read files are raw.
+        # Concat leaves mixed-type object columns (datetime+str, int+str) that pyarrow
+        # can't serialize. Cast object cols to nullable string; step 3 re-coerces types.
+        for _c in combined_df.select_dtypes(include=['object']).columns:
+            combined_df[_c] = combined_df[_c].astype('string')
+        combined_df.to_parquet(buf, index=False)
+        parquet_bytes = buf.getvalue()
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        storage_filename = f"{user_id}/{timestamp}_{uuid.uuid4().hex[:8]}_appended.csv"
-        new_storage_path = upload_file_to_bucket(csv_bytes, storage_filename, 'text/csv')
+        storage_filename = f"{user_id}/{timestamp}_{uuid.uuid4().hex[:8]}_appended.parquet"
+        new_storage_path = upload_file_to_bucket(parquet_bytes, storage_filename, 'application/octet-stream')
     except Exception as e:
         return Response(
             {'error': 'File upload to storage failed', 'message': str(e)},
@@ -509,6 +592,7 @@ def append_to_dataset_view(request, dataset_id):
             'accepted_files': acc['accepted'],
             'rejected_files': acc['rejected'],
             'total_rows': len(combined_df),
+            'mode': 'full',
             'message': f'Appended {len(acc["accepted"])} file(s). Re-processing pipeline started.',
         },
         status=status.HTTP_202_ACCEPTED,
@@ -913,14 +997,26 @@ def aggregate_charts_from_df(df, charts: list) -> list:
                     grouped = grouped.sort_values('value', ascending=False)
                 grouped = grouped.head(MAX_BAR_LINE_GROUPS)
 
+                sec_series = None
                 if y_axis_2 and y_axis_2 in df.columns:
                     sec_series = df.groupby(x_axis, sort=False)[y_axis_2].apply(
                         lambda s: pd.to_numeric(s, errors='coerce').sum()
                     )
-                    sec_map = {str(k): float(v) for k, v in sec_series.items()}
-                    grouped['line'] = grouped['label'].map(lambda l: sec_map.get(str(l), 0.0))
+                    # Key the secondary map with the SAME stringification used for the
+                    # primary labels (grouped['label'] used pandas .astype(str), NOT
+                    # Python str(Timestamp)). Otherwise a datetime x-axis renders keys as
+                    # '2024-01-01' vs '2024-01-01 00:00:00' → every lookup misses → the line
+                    # is a flat 0. Categorical x-axes were unaffected (identical rendering).
+                    sec_index = sec_series.copy()
+                    sec_index.index = sec_index.index.astype(str)
+                    sec_map = sec_index.to_dict()
+                    grouped['line'] = grouped['label'].map(sec_map).fillna(0.0).astype(float)
                     line_name, line_is_pct = y_axis_2, False
-                else:
+
+                # Fall back to the growth-% line when there is no secondary column OR the
+                # secondary series is empty/all-zero (a dead flat line labeled with the
+                # column is worse than showing the trend).
+                if sec_series is None or float(pd.to_numeric(grouped['line'], errors='coerce').abs().sum()) == 0.0:
                     vals = grouped['value'].tolist()
                     line_vals = [0.0]
                     for i in range(1, len(vals)):
@@ -2269,6 +2365,39 @@ def export_pdf(request, dataset_id):
                 'base64': b64,
             })
 
+    # ── Forecast band: latest saved forecast for this dataset (best-effort) ──
+    forecast_summary = None
+    forecast_b64 = None
+    try:
+        hist = get_forecast_results(dataset_id, limit=1)
+        if hist:
+            row = hist[0]
+            detail = get_forecast_result_by_id(row.get('id'))
+            fd = _parse_json_if_string((detail or {}).get('forecast_data'))
+            if isinstance(fd, dict) and fd.get('forecast'):
+                from .pdf_charts import render_forecast_chart
+                forecast_b64 = render_forecast_chart(fd)
+                wape = row.get('best_wape')
+                accuracy = max(0.0, 100.0 - float(wape) * 100.0) if wape is not None else None
+                forecast_summary = {
+                    'target': row.get('target_column'),
+                    'best_model': row.get('best_model'),
+                    'accuracy': accuracy,
+                    'horizon': row.get('horizon'),
+                }
+    except Exception as _fe:
+        logger.warning('PDF forecast band skipped: %s', _fe)
+
+    # ── Column-relationships band: numeric correlation heatmap (best-effort) ──
+    correlation_b64 = None
+    try:
+        corr_df, _cerr = _load_smart_dataframe(dataset)
+        if corr_df is not None:
+            from .pdf_charts import render_correlation_heatmap
+            correlation_b64 = render_correlation_heatmap(corr_df)
+    except Exception as _ce:
+        logger.warning('PDF correlation band skipped: %s', _ce)
+
     # ── Build modern PDF HTML ──
     from .pdf_report import build_pdf_html
     full_html = build_pdf_html(
@@ -2283,6 +2412,9 @@ def export_pdf(request, dataset_id):
         sections=step8.get('sections', []),
         columns_meta=columns_meta,
         segmentation=segmentation,
+        forecast_summary=forecast_summary,
+        forecast_b64=forecast_b64,
+        correlation_b64=correlation_b64,
     )
 
     pdf_bytes = _html_to_pdf_bytes(full_html)
